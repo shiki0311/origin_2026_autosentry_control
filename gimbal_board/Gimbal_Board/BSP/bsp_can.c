@@ -1,17 +1,15 @@
 /********************************************************************************************************************************************
  * @file: bsp_can.c
  * @author: Shiki
- * @date: 2025.9.23
+ * @date: 2025.10.21
  * @brief:	哨兵2026赛季CAN总线支持包，此为云台C板相关的CAN接收和发送代码
  * *******************************************************************************************************************************************
  * @attention: 1.哨兵can报文发送的流程是在各个task计算出需要向电机或其他设备（超电，另一块C板）需要发送的数据后，在xxx_task.c中调用
- *             Allocate_Can_Buffer（）或者Ctrl_DM_Motor()。调用规则为如果是向达秒电机发送can报文，则调用Ctrl_DM_Motor()，其他直接
- *             调用Allocate_Can_Buffer()。这两个函数的最终目的是将各个task要发送的can报文填充入对应的can报文缓冲区（CanTxMsgTypeDef类型的全局结构体变量)，
- * 			   最后can报文会在定时器中断函数中统一发送。
+ *             Allocate_Can_Queue（）或者Ctrl_DM_Motor()。调用规则为如果是向达秒电机发送can报文，则调用Ctrl_DM_Motor()，其他直接
+ *             调用Allocate_Can_Queue()。这两个函数的最终目的是将各个task要发送的can报文填充入对应的can发送队列（队列使用freertos实现)，
+ * 			   最后can报文会在freertos的定时器任务中统一发送。
  *
- *             2.如果要控制某一种can报文的发送频率，可以在定时器中断回调函数修改频率。
- *
- *			   3.如果can报文因为没有空闲邮箱而发送失败，会送入基于freertos创建的队列在有空闲邮箱时尝试重新发送。
+ *             2.本文件为各个task提供接口函数和全局变量（注：定时器任务的创建和实现在Can_Send_Task.c/h)。
  **********************************************************************************************************************************************/
 #include "bsp_can.h"
 #include "bsp_dwt.h"
@@ -33,10 +31,10 @@
 #define V_MAX 45.0f
 #define T_MIN -15.0f
 #define T_MAX 15.0f
-#define P_MIN -12.5f
-#define P_MAX 12.5f
+#define P_MIN -12.56637f
+#define P_MAX 12.56637f
 /*********************************CAN接收ID*******************************************/
-#define BIG_YAW_DM6006_RecID 0x105 // CAN2
+#define BIG_YAW_DM6006_RecID 0x300 // CAN2
 
 #define SMALL_YAW_GM6020_RecID 0x205 // CAN1
 #define PITCH_GM6020_RecID 0x206	 // CAN1
@@ -45,8 +43,8 @@
 #define DIAL_RecID 0x311			 // CAN1，暂未确定电机型号，待定
 
 /*********************************CAN发送ID*******************************************/
-#define RC_TO_CHASSIS_FIRST_ID 0x102  // CAN2,向下板发送遥控器数据，传rc_ctrl.rc.ch数组的前四个元素
-#define RC_TO_CHASSIS_SECOND_ID 0x100 // CAN2,向下板发送遥控器数据，传rc_ctrl.rc.ch数组的第五个元素和rc_ctrl.rc.s数组
+#define RC_TO_CHASSIS_FIRST_ID 0x102 // CAN2,向下板发送遥控器数据
+#define RC_TO_CHASSIS_SECOND_ID 0x100 // CAN2,发什么待定
 #define BIG_YAW_DM6006_TransID 0x01	  // CAN2,DM6006
 
 #define SMALL_YAW_AND_PITCH_TransID 0x1FF // CAN1,两个6020一起发
@@ -134,14 +132,36 @@ void Can_Buffer_Init(void)
 		{&fric_send_buffer, FRIC_M3508_TransID},
 		{&dial_send_buffer, DIAL_TransID}};
 
-	// 遍历数组，批量初始化所有缓冲区
+	// 遍历数组，批量初始化所有缓冲区。需要注意初始化的值应保证目标电流为0，防止电机疯转。
+	// 对于dm以外的电机，初始化为0。对于dm电机需要经过dm协议转换，不能直接赋0！！！！！！！！
 	for (size_t i = 0; i < sizeof(buffer_list) / sizeof(buffer_list[0]); i++)
 	{
-		buffer_list[i].buffer->tx_header.IDE = CAN_ID_STD;							 // 标准帧
-		buffer_list[i].buffer->tx_header.RTR = CAN_RTR_DATA;						 // 数据帧
-		buffer_list[i].buffer->tx_header.DLC = 0x08;								 // 数据长度8字节
-		buffer_list[i].buffer->tx_header.StdId = buffer_list[i].stdId;				 // CAN Id
-		memset(buffer_list[i].buffer->data, 0, sizeof(buffer_list[i].buffer->data)); // 数据缓冲区清零
+		buffer_list[i].buffer->tx_header.IDE = CAN_ID_STD;			   // 标准帧
+		buffer_list[i].buffer->tx_header.RTR = CAN_RTR_DATA;		   // 数据帧
+		buffer_list[i].buffer->tx_header.DLC = 0x08;				   // 数据长度8字节
+		buffer_list[i].buffer->tx_header.StdId = buffer_list[i].stdId; // CAN Id
+
+		if (buffer_list[i].stdId == BIG_YAW_DM6006_TransID)
+		{
+			uint16_t pos_init, vel_init, kp_init, kd_init, tor_init;
+			pos_init = float_to_uint(0, P_MIN, P_MAX, 16);
+			vel_init = float_to_uint(0, V_MIN, V_MAX, 12);
+			kp_init = float_to_uint(0, KP_MIN, KP_MAX, 12);
+			kd_init = float_to_uint(0, KD_MIN, KD_MAX, 12);
+			tor_init = float_to_uint(0, T_MIN, T_MAX, 12);
+			buffer_list[i].buffer->data[0] = (pos_init >> 8);
+			buffer_list[i].buffer->data[1] = pos_init;
+			buffer_list[i].buffer->data[2] = (vel_init >> 4);
+			buffer_list[i].buffer->data[3] = ((vel_init & 0xF) << 4) | (kp_init >> 8);
+			buffer_list[i].buffer->data[4] = kp_init;
+			buffer_list[i].buffer->data[5] = (kd_init >> 4);
+			buffer_list[i].buffer->data[6] = ((kd_init & 0xF) << 4) | (tor_init >> 8);
+			buffer_list[i].buffer->data[7] = tor_init;
+		}
+		else
+		{
+			memset(buffer_list[i].buffer->data, 0, sizeof(buffer_list[i].buffer->data)); 
+		}
 	}
 }
 
@@ -310,7 +330,6 @@ void CAN_TX_TimerIRQHandler()
 	static uint8_t div = 1; // 在函数整体执行频率（500hz）的基础上分频，使不同can报文适配相应的不同频率
 	uint32_t send_mail_box;
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE; // 调度标志
-	Ctrl_DM_Motor(0, 0, 0, 0, 0);
 	// 500hz 发送can报文
 	if (HAL_CAN_AddTxMessage(&SMALL_YAW_AND_PITCH_TransCAN, &small_yaw_and_pitch_send_buffer.tx_header, small_yaw_and_pitch_send_buffer.data, &send_mail_box) != HAL_OK)
 	{
@@ -324,24 +343,24 @@ void CAN_TX_TimerIRQHandler()
 	{
 		xQueueSendFromISR(DIAL_RESEND_QUEUE, &dial_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
 	}
-	if (HAL_CAN_AddTxMessage(&BIG_YAW_DM6006_TransCAN, &big_yaw_send_buffer.tx_header, big_yaw_send_buffer.data, &send_mail_box) != HAL_OK)
-	{
-		xQueueSendFromISR(BIG_YAW_DM6006_RESEND_QUEUE, &big_yaw_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
-	}
+	// if (HAL_CAN_AddTxMessage(&BIG_YAW_DM6006_TransCAN, &big_yaw_send_buffer.tx_header, big_yaw_send_buffer.data, &send_mail_box) != HAL_OK)
+	// {
+	// 	xQueueSendFromISR(BIG_YAW_DM6006_RESEND_QUEUE, &big_yaw_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
+	// }
 	// 166hz 发送can报文
 	if (div % CAN_TX_TIM_DIV3 == 0)
 	{
-		if (HAL_CAN_AddTxMessage(&RC_TO_CHASSIS_SECOND_CAN, &rc_to_chassis_second_send_buffer.tx_header, rc_to_chassis_second_send_buffer.data, &send_mail_box) != HAL_OK)
-		{
-			xQueueSendFromISR(RC_TO_CHASSIS_SECOND_RESEND_QUEUE, &rc_to_chassis_second_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
-		}
 		if (HAL_CAN_AddTxMessage(&RC_TO_CHASSIS_FIRST_CAN, &rc_to_chassis_first_send_buffer.tx_header, rc_to_chassis_first_send_buffer.data, &send_mail_box) != HAL_OK)
 		{
 			xQueueSendFromISR(RC_TO_CHASSIS_FIRST_RESEND_QUEUE, &rc_to_chassis_first_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
 		}
+		// if (HAL_CAN_AddTxMessage(&RC_TO_CHASSIS_SECOND_CAN, &rc_to_chassis_second_send_buffer.tx_header, rc_to_chassis_second_send_buffer.data, &send_mail_box) != HAL_OK)
+		// {
+		// 	xQueueSendFromISR(RC_TO_CHASSIS_SECOND_RESEND_QUEUE, &rc_to_chassis_second_send_buffer, &xHigherPriorityTaskWoken); // 如果发送失败送入队列等待重新发送
+		// }
 	}
 
-	div == 120 ? div = 1 : div++; //div等于2,3,4,5的最小公倍数时重置
+	div == 120 ? div = 1 : div++; // div等于2,3,4,5的最小公倍数时重置
 
 	if (xHigherPriorityTaskWoken == pdTRUE)
 	{

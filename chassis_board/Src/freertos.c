@@ -50,7 +50,6 @@
 osThreadId INS_TASKHandle;
 osThreadId LED_TASKHandle;
 osThreadId Chassis_TASKHandle;
-osThreadId referee_usartHandle;
 osThreadId Detect_TaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,7 +60,6 @@ osThreadId Detect_TaskHandle;
 void INS_Task(void const * argument);
 void LED_Task(void const * argument);
 void Chassis_Task(void const * argument);
-void referee_usart_task(void const * argument);
 void detect_task(void const * argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -137,10 +135,6 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(Chassis_TASK, Chassis_Task, osPriorityAboveNormal, 0, 512);
   Chassis_TASKHandle = osThreadCreate(osThread(Chassis_TASK), NULL);
 
-  /* definition and creation of referee_usart */
-  osThreadDef(referee_usart, referee_usart_task, osPriorityAboveNormal, 0, 256);
-  referee_usartHandle = osThreadCreate(osThread(referee_usart), NULL);
-
   /* definition and creation of Detect_Task */
   osThreadDef(Detect_Task, detect_task, osPriorityAboveNormal, 0, 256);
   Detect_TaskHandle = osThreadCreate(osThread(Detect_Task), NULL);
@@ -203,24 +197,6 @@ __weak void Chassis_Task(void const * argument)
     osDelay(1);
   }
   /* USER CODE END Chassis_Task */
-}
-
-/* USER CODE BEGIN Header_referee_usart_task */
-/**
-* @brief Function implementing the referee_usart thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_referee_usart_task */
-__weak void referee_usart_task(void const * argument)
-{
-  /* USER CODE BEGIN referee_usart_task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END referee_usart_task */
 }
 
 /* USER CODE BEGIN Header_detect_task */

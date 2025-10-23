@@ -61,7 +61,8 @@
 //错误码以及对应设备顺序
 enum errorList
 {
-    DBUS_TOE = 0,
+    RC_FIRST_TOE = 0,
+    RC_SECOND_TOE,
     CHASSIS_MOTOR1_TOE,
     CHASSIS_MOTOR2_TOE,
     CHASSIS_MOTOR3_TOE,

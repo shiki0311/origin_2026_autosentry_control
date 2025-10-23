@@ -32,7 +32,16 @@
 			"stdint.h": "c",
 			"fifo.h": "c",
 			"motor.h": "c",
-			"bsp_dwt.h": "c"
+			"bsp_dwt.h": "c",
+			"cmath": "c",
+			"user_common_lib.h": "c",
+			"tim.h": "c",
+			"gimbal_task.h": "c",
+			"usb_device.h": "c",
+			"queue.h": "c",
+			"can_send_task.h": "c",
+			"bsp_can_chassis.h": "c",
+			"bsp_can_gimbal.h": "c"
 		}
 	}
 }

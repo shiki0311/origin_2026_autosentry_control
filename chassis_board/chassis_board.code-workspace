@@ -4,5 +4,10 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			"COMMIT_EDITMSG": "git-commit",
+			"stm32f4xx_it.h": "c"
+		}
+	}
 }

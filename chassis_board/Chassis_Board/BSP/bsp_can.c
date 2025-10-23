@@ -1,23 +1,19 @@
 /********************************************************************************************************************************************
  * @file: bsp_can.c
  * @author: Shiki
- * @date: 2025.9.23
+ * @date: 2025.10.21
  * @brief:	哨兵2026赛季CAN总线支持包，此为底盘C板相关的CAN接收和发送代码
  * *******************************************************************************************************************************************
  * @attention: 1.哨兵can报文发送的流程是在各个task计算出需要向电机或其他设备（超电，另一块C板）需要发送的数据后，在xxx_task.c中调用
- *             Allocate_Can_Buffer（）或者Ctrl_DM_Motor()。调用规则为如果是向达秒电机发送can报文，则调用Ctrl_DM_Motor()，其他直接
- *             调用Allocate_Can_Buffer()。这两个函数的最终目的是将各个task要发送的can报文填充入对应的can报文缓冲区（CanTxMsgTypeDef类型的全局结构体变量)，
- * 			   最后can报文会在定时器中断函数中统一发送。
+ *             Allocate_Can_Queue（）或者Ctrl_DM_Motor()。调用规则为如果是向达秒电机发送can报文，则调用Ctrl_DM_Motor()，其他直接
+ *             调用Allocate_Can_Queue()。这两个函数的最终目的是将各个task要发送的can报文填充入对应的can发送队列（队列使用freertos实现)，
+ * 			   最后can报文会在freertos的定时器任务中统一发送。
  *
- *             2.如果要控制某一种can报文的发送频率，可以在定时器中断回调函数修改频率。
- *
- *			   3.如果can报文因为没有空闲邮箱而发送失败，会送入基于freertos创建的队列在有空闲邮箱时尝试重新发送。
+ *             2.本文件为各个task提供接口函数和全局变量（注：定时器任务的创建和实现在Can_Send_Task.c/h)。
  **********************************************************************************************************************************************/
 #include "bsp_can.h"
 #include "bsp_cap.h"
 #include "bsp_dwt.h"
-#include "FreeRTOS.h"
-#include "queue.h"
 #include "task.h"
 #include "main.h"
 #include "motor.h"
@@ -33,10 +29,10 @@
 #define V_MAX 45.0f
 #define T_MIN -15.0f
 #define T_MAX 15.0f
-#define P_MIN -12.5f
-#define P_MAX 12.5f
+#define P_MIN -12.56637f
+#define P_MAX 12.56637f
 /*********************************CAN接收ID*******************************************/
-#define BIG_YAW_DM6006_RecID 0x105		 // CAN2,下板需要接收大yaw的电机位置数据用于底盘跟随云台
+#define BIG_YAW_DM6006_RecID 0x300		 // CAN2,下板需要接收大yaw的电机位置数据用于底盘跟随云台
 #define RC_TO_CHASSIS_FIRST_RecID 0x102	 // CAN2
 #define RC_TO_CHASSIS_SECOND_RecID 0x100 // CAN2
 #define STEER1_GM6020_RecID 0x205		 // CAN2
@@ -50,8 +46,8 @@
 #define WHEEL4_M3508_RecID 0x204 // CAN1
 #define CAP_RecID 0x130			 // CAN1 超电
 /*********************************CAN发送ID*******************************************/
-#define STEER_GM6020_TransID 0x1FF // CAN1,4个6020一起发
-#define WHEEL_M3508_TransID 0x200  // CAN1,两个3508一起发
+#define STEER_GM6020_TransID 0x1FF // CAN2,4个6020一起发
+#define WHEEL_M3508_TransID 0x200  // CAN1,4个3508一起发
 #define CAP_TransID 0x140		   // CAN1 超电
 /*******************************CAN发送时的外设实例映射********************************/
 #define STEER_GM6020_TransCAN hcan2
@@ -66,8 +62,8 @@
 /*******************************************************************************/
 CAN_RxHeaderTypeDef rx_header; // debug用，看can接收正不正常
 chassis_rc_ctrl_t chassis_rc_ctrl = {0};
-// int32_t trans_freq = 0; // can发送定时器的中断回调函数每秒执行次数，配合dwt使用
-// int i1,i2,i3;
+//int32_t trans_freq = 0; // can发送定时器的中断回调函数每秒执行次数，配合dwt使用
+//int i1,i2,i3;
 /*********************************************CAN发送队列*********************************************************************/
 QueueHandle_t CAN1_resend_queue; // CAN1消息队列句柄,此队列用于储存CAN1第一次发送失败的消息
 QueueHandle_t CAN2_resend_queue; // CAN2消息队列句柄，此队列用于储存CAN2第一次发送失败的消息
@@ -155,27 +151,27 @@ void Create_Can_Send_Queues()
 /*********************************************CAN接收函数*********************************************************************/
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
-	// static int flag = 0;
-	// static float start_time = 0;
+//	static int flag = 0;
+//	static float start_time = 0;
 
-	// if (flag == 0)
-	// {
-	// 	start_time = DWT_GetTimeline_ms();
-	// 	flag = 1;
-	// }
-	// if (flag == 1)
-	// {
-	// 	if (DWT_GetTimeline_ms() - start_time <= 1000)
-	// 	{
-	// 		trans_freq++;
-	// 	}
-	// 	else
-	// 	{
-	// 		flag = 0;
-	// 		i1=i2=i3=0;
-	// 		trans_freq = 0;
-	// 	}
-	// }
+//	if (flag == 0)
+//	{
+//		start_time = DWT_GetTimeline_ms();
+//		flag = 1;
+//	}
+//	if (flag == 1)
+//	{
+//		if (DWT_GetTimeline_ms() - start_time <= 1000)
+//		{
+//			trans_freq++;
+//		}
+//		else
+//		{
+//			flag = 0;
+//			i1=i2=i3=0;
+//			trans_freq = 0;
+//		}
+//	}
 	uint8_t rx_data[8];
 	if (hcan == &hcan1)
 	{
@@ -222,28 +218,30 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		}
 		case BIG_YAW_DM6006_RecID: // 下板只需要DM6006的位置数据完成底盘跟随云台
 		{
-			// i1++;
+//			i1++;
 			DM_big_yaw_motor.id = (rx_data[0]) & 0x0F;
 			DM_big_yaw_motor.state = (rx_data[0]) >> 4;
 			DM_big_yaw_motor.p_int = (rx_data[1] << 8) | rx_data[2];
-			DM_big_yaw_motor.pos = uint_to_float(DM_big_yaw_motor.p_int, P_MIN, P_MAX, 16) * 57.3248408; // (-3.1415926,3.1415926)
 			break;
 		}
 		case RC_TO_CHASSIS_FIRST_RecID:
 		{
-			// i2++;
-			for (int i = 0; i < 4; i++)
-			{
-				chassis_rc_ctrl.ch[i] = (rx_data[2*i] << 8) | (rx_data[2*i+1]);
-			}
+			uint8_t rc_connected;
+//			i2++;
+			chassis_rc_ctrl.s[1] = rx_data[0];
+			rc_connected = rx_data[1];
+			chassis_rc_ctrl.ch[2] = (rx_data[2] << 8) | rx_data[3];
+			chassis_rc_ctrl.ch[3] = (rx_data[4] << 8) | rx_data[5];
+			chassis_rc_ctrl.ch[4] = (rx_data[6] << 8) | rx_data[7];
+
+			if (rc_connected)
+				detect_hook(RC_FIRST_TOE);
+
 			break;
 		}
 		case RC_TO_CHASSIS_SECOND_RecID:
 		{
-			// i3++;
-			chassis_rc_ctrl.ch[4] = (rx_data[0] << 8) | (rx_data[1]);
-			chassis_rc_ctrl.s[0] = rx_data[3];
-			chassis_rc_ctrl.s[1] = rx_data[5];
+//			i3++;//此can报文还未确定会发什么数据过来
 			break;
 		}
 		default:
@@ -312,27 +310,6 @@ void Allocate_Can_Buffer(int16_t data1, int16_t data2, int16_t data3, int16_t da
  */
 void CAN_TX_TimerIRQHandler()
 {
-	// static int flag = 0;
-	// static float start_time = 0;
-
-	// if (flag == 0)
-	// {
-	// 	start_time = DWT_GetTimeline_ms();
-	// 	flag = 1;
-	// }
-	// if (flag == 1)
-	// {
-	// 	if (DWT_GetTimeline_ms() - start_time <= 1000)
-	// 	{
-	// 		trans_freq++;
-	// 	}
-	// 	else
-	// 	{
-	// 		flag = 0;
-	// 		trans_freq = 0;
-	// 	}
-	// }
-
 	static uint8_t div = 1; // 在函数整体执行频率（500hz）的基础上分频，使不同can报文适配相应的不同频率
 	uint32_t send_mail_box;
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE; // 调度标志

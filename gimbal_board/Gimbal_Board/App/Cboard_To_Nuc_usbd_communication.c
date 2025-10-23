@@ -8,20 +8,21 @@
  *  V2.0tim    2025-7               Shiki           2.从在freertos task发送数据改为使用定时器中断发送数据
  *****************************************************************************************/
 #include "Cboard_To_Nuc_usbd_communication.h"
-#include "arm_math.h"
-#include "Shoot_Task.h"
 #include "referee.h"
-#include "remote_control.h"
 #include "tim.h"
 #include "usb_device.h"
 
-uint8_t USBD_Buf[2][USBD_RX_BUF_LENGHT], NUC_USBD_RxBuf[USBD_RX_BUF_LENGHT], NUC_USBD_TxBuf[USBD_TX_BUF_LENGHT];
+uint8_t NUC_USBD_RxBuf[USBD_RX_BUF_LENGHT], NUC_USBD_AutoAim_TxBuf[USBD_TX_BUF_LENGHT], NUC_USBD_Referee_TxBuf[USBD_TX_BUF_LENGHT];
 uint8_t yaw_rotate_flag_last = 0;
+
 AutoAim_Data_Tx AutoAim_Data_Transmit;
 AutoAim_Data_Rx AutoAim_Data_Receive;
 Referee_Data_Tx Referee_Data_Tramsit;
-
-//8位版本CRC表
+// 发送数据状态跟踪
+bool_t is_sending_referee = FALSE; // 标记是否正在发送referee数据
+bool_t autoaim_pending = FALSE;	   // 标记是否有等待发送的autoaim数据
+bool_t referee_pending = FALSE;	   // 标记是否有等待发送的referee数据
+// 8位版本CRC表
 static const uint8_t CRC08_Table[256] = {
     0x00, 0x5e, 0xbc, 0xe2, 0x61, 0x3f, 0xdd, 0x83, 0xc2, 0x9c, 0x7e, 0x20, 0xa3, 0xfd, 0x1f, 0x41,
     0x9d, 0xc3, 0x21, 0x7f, 0xfc, 0xa2, 0x40, 0x1e, 0x5f, 0x01, 0xe3, 0xbd, 0x3e, 0x60, 0x82, 0xdc,
@@ -40,7 +41,9 @@ static const uint8_t CRC08_Table[256] = {
     0xe9, 0xb7, 0x55, 0x0b, 0x88, 0xd6, 0x34, 0x6a, 0x2b, 0x75, 0x97, 0xc9, 0x4a, 0x14, 0xf6, 0xa8,
     0x74, 0x2a, 0xc8, 0x96, 0x15, 0x4b, 0xa9, 0xf7, 0xb6, 0xe8, 0x0a, 0x54, 0xd7, 0x89, 0x6b, 0x35,
 };
-uint8_t NUC_Data_Unpack(void)
+
+/**************************接收并解包NUC发来的数据********************************/
+void NUC_Data_Unpack(void)
 {
 	switch (NUC_USBD_RxBuf[2])
 	{
@@ -52,11 +55,22 @@ uint8_t NUC_Data_Unpack(void)
 	}
 
 	default:
-		return 1;
+		return;
 	}
-
-	return 0;
 }
+
+void USBD_IRQHandler(uint8_t *Buf, uint16_t Len)
+{
+	memcpy(NUC_USBD_RxBuf, Buf, Len);
+	if (NUC_USBD_RxBuf[0] != 0xAA || NUC_USBD_RxBuf[1] > 128) // 帧头不匹配或者数据包长度错误，丢弃这一帧
+		return;
+
+	if (NUC_USBD_RxBuf[1] == Len) // 校验数据包长度
+		NUC_Data_Unpack();		  // 解包NUC数据
+}
+
+/**************************打包数据并向nuc发送******************************* */
+
 void NUC_USBD_Tx(uint8_t cmdid)
 {
 	Protocol_Head_Data Protocol_Head;
@@ -65,22 +79,29 @@ void NUC_USBD_Tx(uint8_t cmdid)
 	switch (cmdid)
 	{
 	case CMD_ID_AUTOAIM_DATA_TX:
-		Protocol_Head.Length = LENGTH_AUTOAIM_DATA_TX + 4;
-		memcpy(NUC_USBD_TxBuf, (uint8_t *)(&Protocol_Head), 3);
+		Protocol_Head.Length = LENGTH_AUTOAIM_DATA_TX + PROTOCAL_HEAD_LENGTH + CRC_TAIL_LENGTH;
+		memcpy(NUC_USBD_AutoAim_TxBuf, (uint8_t *)(&Protocol_Head), PROTOCAL_HEAD_LENGTH);
 		AutoAim_Data_Transmit.Pitch = INS_angle_deg[1];
 		AutoAim_Data_Transmit.Roll = INS_angle_deg[2];
 		AutoAim_Data_Transmit.Yaw = INS_angle_deg[0];
 
-		memcpy(NUC_USBD_TxBuf + 3, (uint8_t *)(&AutoAim_Data_Transmit), LENGTH_AUTOAIM_DATA_TX);
+		memcpy(NUC_USBD_AutoAim_TxBuf + PROTOCAL_HEAD_LENGTH, (uint8_t *)(&AutoAim_Data_Transmit), LENGTH_AUTOAIM_DATA_TX);
 
-		NUC_USBD_TxBuf[LENGTH_AUTOAIM_DATA_TX + 3] = CRC_Calculation(NUC_USBD_TxBuf, LENGTH_AUTOAIM_DATA_TX + 3);
-		//			HAL_UART_Transmit_DMA(&huart1, Usart1_Dma_Txbuf, LENGTH_AUTOAIM_DATA_TX + 6-2+1);
-		CDC_Transmit_FS(NUC_USBD_TxBuf, LENGTH_AUTOAIM_DATA_TX + 6 - 2);
+		NUC_USBD_AutoAim_TxBuf[LENGTH_AUTOAIM_DATA_TX + PROTOCAL_HEAD_LENGTH] = CRC_Calculation(NUC_USBD_AutoAim_TxBuf, LENGTH_AUTOAIM_DATA_TX + PROTOCAL_HEAD_LENGTH);
+		if (is_sending_referee)
+		{
+			autoaim_pending = TRUE;
+		}
+		else
+		{
+			if (CDC_Transmit_FS(NUC_USBD_AutoAim_TxBuf, Protocol_Head.Length) != USBD_OK)
+				autoaim_pending = TRUE;
+		}
 		break;
 
 	case CMD_ID_REFEREE_DATA_TX:
-		Protocol_Head.Length = LENGTH_REFEREE_DATA_TX + 4;
-		memcpy(NUC_USBD_TxBuf, (uint8_t *)(&Protocol_Head), 3);
+		Protocol_Head.Length = LENGTH_REFEREE_DATA_TX + PROTOCAL_HEAD_LENGTH + CRC_TAIL_LENGTH;
+		memcpy(NUC_USBD_Referee_TxBuf, (uint8_t *)(&Protocol_Head), PROTOCAL_HEAD_LENGTH);
 
 		Referee_Data_Tramsit.remain_HP = Game_Robot_State.current_HP;
 		Referee_Data_Tramsit.max_HP = Game_Robot_State.maximum_HP;
@@ -110,48 +131,43 @@ void NUC_USBD_Tx(uint8_t cmdid)
 		Referee_Data_Tramsit.hurt_reason = Robot_Hurt.hurt_type;
 		Referee_Data_Tramsit.enemy_hero_position = Student_Interactive_Data.enemy_hero_position_data;
 		Referee_Data_Tramsit.defend_fortress = Student_Interactive_Data.check_defend_fortress;
-		memcpy(NUC_USBD_TxBuf + 3, (uint8_t *)(&Referee_Data_Tramsit), LENGTH_REFEREE_DATA_TX);
+		memcpy(NUC_USBD_Referee_TxBuf + 3, (uint8_t *)(&Referee_Data_Tramsit), LENGTH_REFEREE_DATA_TX);
 
-		NUC_USBD_TxBuf[LENGTH_AUTOAIM_DATA_TX + 3] = CRC_Calculation(NUC_USBD_TxBuf, LENGTH_REFEREE_DATA_TX + 3);
-		//				HAL_UART_Transmit_DMA(&huart1, Usart1_Dma_Txbuf, LENGTH_REFEREE_DATA_TX + 6-2);
-		CDC_Transmit_FS(NUC_USBD_TxBuf, LENGTH_REFEREE_DATA_TX + 4);
+		NUC_USBD_Referee_TxBuf[LENGTH_AUTOAIM_DATA_TX + PROTOCAL_HEAD_LENGTH] = CRC_Calculation(NUC_USBD_Referee_TxBuf, LENGTH_REFEREE_DATA_TX + PROTOCAL_HEAD_LENGTH);
+
+		if (CDC_Transmit_FS(NUC_USBD_Referee_TxBuf, Protocol_Head.Length) != USBD_OK)
+		{
+			referee_pending = TRUE;
+		}
+		else
+		{
+			is_sending_referee = TRUE;
+		}
+
 		break;
 	default:
 		return;
 	}
 }
 
-void NUC_TX_Autoaim(TIM_HandleTypeDef *htim)
+void Send_To_NUC(TIM_HandleTypeDef *htim)
 {
 	if (htim == &htim1)
 	{
-		// 5ms trigger
-		NUC_USBD_Tx(CMD_ID_AUTOAIM_DATA_TX);
+		static uint8_t cnt = 0;
+
+		if (cnt == 9)
+		{
+			NUC_USBD_Tx(CMD_ID_REFEREE_DATA_TX); // 50ms trigger
+			cnt = 0;
+		}
+		else
+			cnt++;
+
+		NUC_USBD_Tx(CMD_ID_AUTOAIM_DATA_TX); // 5ms trigger
 	}
-}
-
-void NUC_TX_Referee(TIM_HandleTypeDef *htim)
-{
-//	if (htim == &htim8)
-//	{
-//		// 50ms trigger todo
-//		NUC_USBD_Tx(CMD_ID_REFEREE_DATA_TX);
-//	}
-}
-
-uint8_t USBD_IRQHandler(uint8_t *Buf, uint16_t Len)
-{
-	memcpy(NUC_USBD_RxBuf, Buf, Len);
-	if (NUC_USBD_RxBuf[0] != 0xAA || NUC_USBD_RxBuf[1] > 128) // 帧头不匹配或者数据包长度错误，丢弃这一帧
-		return 1;
-
-	if (NUC_USBD_RxBuf[1] == Len) // 校验数据包长度
-	{
-		NUC_Data_Unpack(); // 解包NUC数据
-		return 0;
-	}
-	else	
-		return 1;
+	else
+		return;
 }
 
 uint8_t CRC_Calculation(uint8_t *ptr, uint16_t len)
@@ -162,4 +178,43 @@ uint8_t CRC_Calculation(uint8_t *ptr, uint16_t len)
 		crc = CRC08_Table[crc ^ *ptr++];
 	}
 	return crc;
+}
+
+/**************************处理发送完成后的状态更新和积压数据发送******************************* */
+/**
+ * @brief  处理发送完成后的状态更新和积压数据发送
+ * @param  Buf: 发送完成的缓冲区地址（用于判断是referee还是autoaim）
+ * @retval None
+ */
+void Process_Transmit_Complete(uint8_t *Buf)
+{
+	// 若完成的是referee数据发送
+	if (Buf == NUC_USBD_Referee_TxBuf)
+	{
+		is_sending_referee = 0; // 清除referee发送状态
+
+		// 若有积压的autoaim数据，立即发送
+		if (autoaim_pending)
+		{
+			// 发送缓存的autoaim数据
+			CDC_Transmit_FS(NUC_USBD_AutoAim_TxBuf, LENGTH_AUTOAIM_DATA_TX + PROTOCAL_HEAD_LENGTH + CRC_TAIL_LENGTH);
+			autoaim_pending = 0; // 清除积压标记
+		}
+	}
+	// 若完成的是autoaim数据发送
+	else if (Buf == NUC_USBD_AutoAim_TxBuf)
+	{
+		// 若有积压的referee数据，立即发送
+		if (referee_pending)
+		{
+			CDC_Transmit_FS(NUC_USBD_Referee_TxBuf, LENGTH_REFEREE_DATA_TX + PROTOCAL_HEAD_LENGTH + CRC_TAIL_LENGTH);
+			referee_pending = 0; // 清除积压标记
+		}
+		else if (autoaim_pending)
+		{
+			// 发送缓存的autoaim数据
+			CDC_Transmit_FS(NUC_USBD_AutoAim_TxBuf, LENGTH_AUTOAIM_DATA_TX + PROTOCAL_HEAD_LENGTH + CRC_TAIL_LENGTH);
+			autoaim_pending = 0; // 清除积压标记
+		}
+	}
 }
