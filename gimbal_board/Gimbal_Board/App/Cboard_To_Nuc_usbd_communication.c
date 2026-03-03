@@ -100,9 +100,9 @@ void NUC_USBD_Tx(uint8_t cmdid)
 	case CMD_ID_AUTOAIM_DATA_TX:
 		Protocol_Head.Length = LENGTH_AUTOAIM_DATA_TX + PROTOCAL_HEAD_LENGTH + CRC_TAIL_LENGTH;
 		memcpy(NUC_USBD_AutoAim_TxBuf, (uint8_t *)(&Protocol_Head), PROTOCAL_HEAD_LENGTH);
-		AutoAim_Data_Transmit.Pitch = INS_angle_deg[1];
-		AutoAim_Data_Transmit.Roll = INS_angle_deg[2];
-		AutoAim_Data_Transmit.Yaw = INS_angle_deg[0];
+		AutoAim_Data_Transmit.Pitch = INS.Pitch;
+		AutoAim_Data_Transmit.Roll = INS.Roll;
+		AutoAim_Data_Transmit.Yaw = INS.Yaw;
 
 		memcpy(NUC_USBD_AutoAim_TxBuf + PROTOCAL_HEAD_LENGTH, (uint8_t *)(&AutoAim_Data_Transmit), LENGTH_AUTOAIM_DATA_TX);
 
@@ -129,21 +129,21 @@ void NUC_USBD_Tx(uint8_t cmdid)
 		Referee_Data_Tramsit.coin_remaining_num = Bullet_Remaining.coin_remaining_num;
 		Referee_Data_Tramsit.bullet_remaining_num_17mm = Bullet_Remaining.bullet_remaining_num_17mm;
 
-		Referee_Data_Tramsit.red_1_HP = Game_Robot_HP.red_1_robot_HP;
-		Referee_Data_Tramsit.red_2_HP = Game_Robot_HP.red_2_robot_HP;
-		Referee_Data_Tramsit.red_3_HP = Game_Robot_HP.red_3_robot_HP;
-		Referee_Data_Tramsit.red_4_HP = Game_Robot_HP.red_4_robot_HP;
-		Referee_Data_Tramsit.red_7_HP = Game_Robot_HP.red_7_robot_HP;
-		Referee_Data_Tramsit.red_outpost_HP = Game_Robot_HP.red_outpost_HP;
-		Referee_Data_Tramsit.red_base_HP = Game_Robot_HP.red_base_HP;
+//		Referee_Data_Tramsit.red_1_HP = Game_Robot_HP.red_1_robot_HP;
+//		Referee_Data_Tramsit.red_2_HP = Game_Robot_HP.red_2_robot_HP;
+//		Referee_Data_Tramsit.red_3_HP = Game_Robot_HP.red_3_robot_HP;
+//		Referee_Data_Tramsit.red_4_HP = Game_Robot_HP.red_4_robot_HP;
+//		Referee_Data_Tramsit.red_7_HP = Game_Robot_HP.red_7_robot_HP;
+//		Referee_Data_Tramsit.red_outpost_HP = Game_Robot_HP.red_outpost_HP;
+//		Referee_Data_Tramsit.red_base_HP = Game_Robot_HP.red_base_HP;
 
-		Referee_Data_Tramsit.blue_1_HP = Game_Robot_HP.blue_1_robot_HP;
-		Referee_Data_Tramsit.blue_2_HP = Game_Robot_HP.blue_2_robot_HP;
-		Referee_Data_Tramsit.blue_3_HP = Game_Robot_HP.blue_3_robot_HP;
-		Referee_Data_Tramsit.blue_4_HP = Game_Robot_HP.blue_4_robot_HP;
-		Referee_Data_Tramsit.blue_7_HP = Game_Robot_HP.blue_7_robot_HP;
-		Referee_Data_Tramsit.blue_outpost_HP = Game_Robot_HP.blue_outpost_HP;
-		Referee_Data_Tramsit.blue_base_HP = Game_Robot_HP.blue_base_HP;
+//		Referee_Data_Tramsit.blue_1_HP = Game_Robot_HP.blue_1_robot_HP;
+//		Referee_Data_Tramsit.blue_2_HP = Game_Robot_HP.blue_2_robot_HP;
+//		Referee_Data_Tramsit.blue_3_HP = Game_Robot_HP.blue_3_robot_HP;
+//		Referee_Data_Tramsit.blue_4_HP = Game_Robot_HP.blue_4_robot_HP;
+//		Referee_Data_Tramsit.blue_7_HP = Game_Robot_HP.blue_7_robot_HP;
+//		Referee_Data_Tramsit.blue_outpost_HP = Game_Robot_HP.blue_outpost_HP;
+//		Referee_Data_Tramsit.blue_base_HP = Game_Robot_HP.blue_base_HP;
 
 		Referee_Data_Tramsit.rfid_status = RFID_Status.rfid_status;
 		Referee_Data_Tramsit.event_data = Event_Data.event_type;

@@ -17,7 +17,12 @@
 #include "cmsis_os.h"
 #include "struct_typedef.h"
 
-#include "INS_task.h"
+#if USE_EKF == 1
+#include "INS_Task_ekf.h"
+#else
+#include "INS_Task_Mahony.h"
+#endif
+
 #include "arm_math.h"
 
 #include "usbd_cdc_if.h"

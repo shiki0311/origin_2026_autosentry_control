@@ -133,7 +133,7 @@ int main(void)
   fifo_s_init(&Referee_FIFO, Referee_FIFO_Buffer, REFEREE_FIFO_BUF_LENGTH);               // 初始化裁判系统数据接收队列
   Referee_StructInit();                                                                   // 初始化裁判系统数据结构体
   Referee_USART6_Init(Referee_Buffer[0], Referee_Buffer[1], REFEREE_USART_RX_BUF_LENGHT); // 设置裁判系统串口dma双缓冲区并开启dma，同时使能串口空闲中断    
-  /*****************创建信号量，用于INS和Gimbal任务同步，确保gimbal任务在INS任务启动之后开始执行（前人做法是gimbal先delay足够久的时间，但我觉得这样太shit了）*************/
+  /*****************创建信号量，用于INS和Gimbal任务同步，确保gimbal任务在INS任务运行一段时间后开始执行（前人做法是gimbal先delay足够久的时间，但我觉得这样太shit了）*************/
   // 创建二进制信号量，初始值为0（未释放）
   ins_init_done_semaphore = xSemaphoreCreateBinary();
   if (ins_init_done_semaphore == NULL)

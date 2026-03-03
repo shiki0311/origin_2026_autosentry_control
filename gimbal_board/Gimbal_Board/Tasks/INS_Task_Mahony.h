@@ -21,9 +21,16 @@
   ****************************(C) COPYRIGHT 2019 DJI****************************
   */
 
-#ifndef INS_Task_H
-#define INS_Task_H
+#ifndef INS_Task_Mahony_H
+#define INS_Task_Mahony_H
+
+#include "main.h"
+
+#if USE_EKF == 0
+
 #include "struct_typedef.h"
+#include "bmi088driver.h"
+#include "pid.h"
 
 #define IMU_Temp_Set 25
 
@@ -56,26 +63,25 @@
 
 #define INS_TASK_INIT_TIME 7 //任务开始初期 delay 一段时间
 
-#define INS_YAW_ADDRESS_OFFSET    0
-#define INS_PITCH_ADDRESS_OFFSET  2
-#define INS_ROLL_ADDRESS_OFFSET   1
+#ifndef AXIS_X
+#define AXIS_X 0
+#define AXIS_Y 1
+#define AXIS_Z 2
+#endif
 
-#define INS_GYRO_X_ADDRESS_OFFSET 0
-#define INS_GYRO_Y_ADDRESS_OFFSET 1
-#define INS_GYRO_Z_ADDRESS_OFFSET 2
+typedef struct
+{
+  float Gyro[3];  // 角速度
+  float Accel[3]; // 加速度
 
-#define INS_ACCEL_X_ADDRESS_OFFSET 0
-#define INS_ACCEL_Y_ADDRESS_OFFSET 1
-#define INS_ACCEL_Z_ADDRESS_OFFSET 2
+  // 位姿
+  float Roll;
+  float Pitch;
+  float Yaw;
 
-#define INS_MAG_X_ADDRESS_OFFSET 0
-#define INS_MAG_Y_ADDRESS_OFFSET 1
-#define INS_MAG_Z_ADDRESS_OFFSET 2
-
-#include "bmi088driver.h"
-
-extern fp32 INS_angle_deg[3];
-extern bmi088_real_data_t bmi088_real_data;
+  pid_type_def imu_temp_pid; // bmi088温度控制PID
+} INS_mahony_t;
+extern INS_mahony_t INS;
 
 /**
   * @brief          imu task, init bmi088, ist8310, calculate the euler angle
@@ -183,5 +189,7 @@ extern const fp32 *get_accel_data_point(void);
 extern const fp32 *get_mag_data_point(void);
 
 void DMA2_Stream2_IRQHandler_1(void);
+
+#endif
 
 #endif

@@ -7,7 +7,7 @@
  * @attention: 1.哨兵can报文发送的流程是在各个task计算出需要向电机或其他设备（超电，另一块C板）需要发送的数据后，在xxx_task.c中调用
  *             Allocate_Can_Queue（）或者Ctrl_DM_Motor()。调用规则为如果是向达秒电机发送can报文，则调用Ctrl_DM_Motor()，其他直接
  *             调用Allocate_Can_Queue()。这两个函数的最终目的是将各个task要发送的can报文填充入对应的can发送队列（队列使用freertos实现)，
- * 			   		 最后can报文会在freertos的定时器任务中统一发送。
+ * 			   最后can报文会在freertos的定时器任务中统一发送。
  *
  *             2.本文件为各个task提供接口函数和全局变量（注：定时器任务的创建和实现在Can_Send_Task.c/h)。
  **********************************************************************************************************************************************/
@@ -193,7 +193,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         {
             uint8_t i = rx_header.StdId - WHEEL1_M3508_RecID;
             get_motor_measure(&motor_measure_wheel[i], rx_data);
-            // detect_hook(CHASSIS_MOTOR1_TOE + i);
+            detect_hook(WHEEL_MOTOR_1_TOE + i);
 
             // if(trans == 1)
             // {
@@ -210,6 +210,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         {
             uint8_t i = rx_header.StdId - STEER1_GM6020_RecID;
             get_motor_measure(&motor_measure_steer[i], rx_data);
+            detect_hook(STEER_MOTOR_1_TOE + i);
 
             // if (trans == 1)
             // {

@@ -52,7 +52,7 @@ static health_state_t Health_State_Update(void)
     static uint32_t hurt_start_time;
     static uint16_t last_robot_hp;
     static health_state_t health_state = HEALTH_NORMAL;         // 在上板判断哨兵健康状态后传到下板，用于设置小陀螺转速
-    bool_t hit_by_bullet = (Game_Robot_State.current_HP < last_robot_hp && Robot_Hurt.hurt_type == 0 && Robot_Hurt.armor_type != 0); // 判断是否被弹丸击打
+    bool_t hit_by_bullet = (Game_Robot_State.current_HP < last_robot_hp && Robot_Hurt.hurt_type == Hurt_Type_ArmoredPlate && Robot_Hurt.armor_type != 0); // 判断是否被弹丸击打
 
     switch (health_state)
     {

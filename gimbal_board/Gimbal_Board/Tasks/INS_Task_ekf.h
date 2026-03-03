@@ -21,6 +21,9 @@
 #ifndef INS_Task_EKF_H
 #define INS_Task_EKF_H
 
+#include "main.h"
+#if USE_EKF == 1
+
 #include "struct_typedef.h"
 #include "bmi088driver.h"
 #include "pid.h"
@@ -30,13 +33,15 @@
 
 /* 温度稳定判断参数（IMU校准模式下使用） */
 #define TEMP_STABLE_THRESHOLD    0.5f    /* 温度稳定判断阈值（度） */
-#define TEMP_STABLE_TIME_COUNT   100     /* 温度需要稳定的次数 */
+#define TEMP_STABLE_TIME_COUNT   3000     /* 温度需要稳定的次数 */
 
 #define IMU_Temp_Set 25
 
+#ifndef AXIS_X
 #define AXIS_X 0
 #define AXIS_Y 1
 #define AXIS_Z 2
+#endif
 
 #define SPI_DMA_GYRO_LENGHT       8
 #define SPI_DMA_ACCEL_LENGHT      9
@@ -64,22 +69,6 @@
 
 #define MPU6500_TEMP_PWM_MAX 5000 //mpu6500控制温度的设置TIM的重载值，即给PWM最大为 MPU6500_TEMP_PWM_MAX - 1
 
-#define INS_YAW_ADDRESS_OFFSET    0
-#define INS_PITCH_ADDRESS_OFFSET  2
-#define INS_ROLL_ADDRESS_OFFSET   1
-
-#define INS_GYRO_X_ADDRESS_OFFSET 0   //yaw
-#define INS_GYRO_Y_ADDRESS_OFFSET 1   //pitch
-#define INS_GYRO_Z_ADDRESS_OFFSET 2   //roll
-
-#define INS_ACCEL_X_ADDRESS_OFFSET 0
-#define INS_ACCEL_Y_ADDRESS_OFFSET 1
-#define INS_ACCEL_Z_ADDRESS_OFFSET 2
-
-#define INS_MAG_X_ADDRESS_OFFSET 0
-#define INS_MAG_Y_ADDRESS_OFFSET 1
-#define INS_MAG_Z_ADDRESS_OFFSET 2
-
 typedef struct
 {
   float Gyro[3];          // 角速度
@@ -94,8 +83,8 @@ typedef struct
   uint32_t INS_DWT_Count;
 
   pid_type_def imu_temp_pid; //bmi088温度控制PID
-} INS_t;
-extern INS_t INS;
+} INS_ekf_t;
+extern INS_ekf_t INS;
 
 extern bmi088_real_data_t bmi088_real_data;
 
@@ -112,5 +101,7 @@ extern bmi088_real_data_t bmi088_real_data;
 extern void INS_Task(void const *pvParameters);
 
 void DMA2_Stream2_IRQHandler_1(void);
+
+#endif
 
 #endif

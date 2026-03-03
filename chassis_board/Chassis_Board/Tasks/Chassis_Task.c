@@ -268,17 +268,28 @@ static void Chassis_Max_Power_Update(fp32 *chassis_max_power) // ¸ù¾İ²»Í¬Ä£Ê½Ñ¡Ô
 			break;
 		case PASS_BUMPY:
 #if HAVE_REFEREE_SYSTEM
-			*chassis_max_power = limit(nav_ctrl.referee_power_limit + cap_data.cap_per * 100, 90.0f, 180.0f);
+			*chassis_max_power = limit(nav_ctrl.referee_power_limit * 0.9f + cap_data.cap_per * 100, 90.0f, 180.0f);
 #else
 			*chassis_max_power = 90;
 #endif
 			break;
+		
 		case UPDOWN_HILL:
+#if HAVE_REFEREE_SYSTEM
 			*chassis_max_power = limit(nav_ctrl.referee_power_limit + cap_data.cap_per * 70, 40.0f, 150.0f);
+#else
+			*chassis_max_power = 120;
+#endif
 			break;
+		
 		case HURT:
+#if HAVE_REFEREE_SYSTEM
 			*chassis_max_power = nav_ctrl.referee_power_limit + cap_data.cap_per * 100;
+#else
+			*chassis_max_power = 160;
+#endif
 			break;
+		
 		case NAV_NORMAL_MODE:
 #if HAVE_REFEREE_SYSTEM
 			*chassis_max_power = limit(nav_ctrl.referee_power_limit * 0.9f, 0.0f, 65.0f);
@@ -377,7 +388,7 @@ static void Set_Chassis_VxVy(fp32 yaw_chassis_zero_rad, fp32 *chassis_vx, fp32 *
 static void Set_FollowGimbal_Wz(fp32 follow_gimbal_angle, fp32 *wz)
 {
 	PID_calc(&chassis_control.chassis_follow_gimbal_pid, follow_gimbal_angle, 0);
-	*wz = chassis_control.chassis_follow_gimbal_pid.out;
+	*wz = -chassis_control.chassis_follow_gimbal_pid.out;
 }
 
 /**
@@ -392,7 +403,7 @@ static void Set_Rotate_Wz(fp32 *wz)
 		*wz = ramp_control(*wz, ROTATE_WZ_MAX * RAD_PER_SEC_TO_RPM, 0.1f); // ¸ßËÙÍÓÂİ
 	else if (chassis_rc_ctrl.s[1] == RC_SW_MID && chassis_rc_ctrl.ch[4] >= 500)
 		*wz = ramp_control(*wz, ROTATE_WZ_MEDIUM * RAD_PER_SEC_TO_RPM, 0.8f); // µÍËÙÍÓÂİ
-	else																	  // µ¼º½Ä£Ê½ÏÂµÄĞ¡ÍÓÂİËÙ¶ÈÉèÖÃ
+	else	// µ¼º½Ä£Ê½ÏÂµÄĞ¡ÍÓÂİËÙ¶ÈÉèÖÃ
 	{
 		if (toe_is_error(NAV_TOE))
 		{
@@ -405,7 +416,7 @@ static void Set_Rotate_Wz(fp32 *wz)
 			else if (nav_ctrl.health_state == HEALTH_HURT)
 			{
 				// ¸ù¾İµ×ÅÌxyÖáËÙ¶ÈÉèÖÃÌÓÅÜÍÓÂİËÙ¶È£¬ËÙ¶ÈÔ½¿ìÍÓÂİ×ªµÃÔ½Âı£¬±£Ö¤ÔÚÒ»¶¨¹¦ÂÊÉÏÏŞÏÂµÄÌÓÍÑ»úÂÊ±ä¸ß
-				fp32 nav_speed_now;
+				fp32 nav_speed_now = 0;
 				arm_sqrt_f32(chassis_target_speed.vx * chassis_target_speed.vx + chassis_target_speed.vy * chassis_target_speed.vy, &nav_speed_now);
 				fp32 nav_escape_wz_coeff = limit(nav_speed_now / NAV_MAX_SPEED, 0.0f, 1.0f);
 				*wz = -ROTATE_WZ_MEDIUM * RAD_PER_SEC_TO_RPM + (1 - nav_escape_wz_coeff) * (ROTATE_WZ_MAX * RAD_PER_SEC_TO_RPM + ROTATE_WZ_MEDIUM * RAD_PER_SEC_TO_RPM);
@@ -523,7 +534,7 @@ static void Chassis_Vector_To_Steer_Angle(const fp32 vx_set, const fp32 vy_set, 
 			stop_flag = 0;
 			for (int i = 0; i < 4; i++) // ×ÔËøÄ£Ê½£¬ÏàÁÚ¶æÂÖÖ®¼ä½Ç¶È²îÎª90¶È
 			{
-				temp_stop_angle_set[i] = 135.0f + i * 90.0f;
+				temp_stop_angle_set[i] = 225.0f + i * 90.0f;
 				// Ñ¡ÔñÂ·³Ì×î¶ÌµÄ·½ÏòĞı×ª£¬±£Ö¤¶æÂÖÃ¿´ÎĞı×ªµÄ½Ç¶ÈĞ¡ÓÚµÈÓÚ90¶È
 				chassis_steer_motor[i].angle_set = Find_Steer_Min_Angle(temp_stop_angle_set[i], chassis_steer_motor[i].angle_now);
 			}
@@ -536,10 +547,10 @@ static void Chassis_Vector_To_Steer_Angle(const fp32 vx_set, const fp32 vy_set, 
 		fp32 vy_linear = wz_set * MOTOR_DISTANCE_LENGTH / (2 * MOTOR_DISTANCE_TO_CENTER);
 		fp32 target_angle_rad[4];
 
-		arm_atan2_f32((vy_set - vy_linear), (vx_set + vx_linear), &target_angle_rad[0]);
-		arm_atan2_f32((vy_set + vy_linear), (vx_set + vx_linear), &target_angle_rad[1]);
-		arm_atan2_f32((vy_set + vy_linear), (vx_set - vx_linear), &target_angle_rad[2]);
-		arm_atan2_f32((vy_set - vy_linear), (vx_set - vx_linear), &target_angle_rad[3]);
+		arm_atan2_f32((vy_set - vy_linear), (vx_set + vx_linear), &target_angle_rad[3]);
+		arm_atan2_f32((vy_set + vy_linear), (vx_set + vx_linear), &target_angle_rad[0]);
+		arm_atan2_f32((vy_set + vy_linear), (vx_set - vx_linear), &target_angle_rad[1]);
+		arm_atan2_f32((vy_set - vy_linear), (vx_set - vx_linear), &target_angle_rad[2]);
 
 		for (int i = 0; i < 4; i++)
 		{
@@ -592,10 +603,10 @@ static void Chassis_Vector_To_Wheel_Speed(const fp32 vx_set, const fp32 vy_set, 
 	fp32 vy_linear = wz_set * MOTOR_DISTANCE_LENGTH / (2 * MOTOR_DISTANCE_TO_CENTER);
 	fp32 wheel_speed[4];
 
-	arm_sqrt_f32((vy_set - vy_linear) * (vy_set - vy_linear) + (vx_set + vx_linear) * (vx_set + vx_linear), &wheel_speed[0]);
-	arm_sqrt_f32((vy_set + vy_linear) * (vy_set + vy_linear) + (vx_set + vx_linear) * (vx_set + vx_linear), &wheel_speed[1]);
-	arm_sqrt_f32((vy_set + vy_linear) * (vy_set + vy_linear) + (vx_set - vx_linear) * (vx_set - vx_linear), &wheel_speed[2]);
-	arm_sqrt_f32((vy_set - vy_linear) * (vy_set - vy_linear) + (vx_set - vx_linear) * (vx_set - vx_linear), &wheel_speed[3]);
+	arm_sqrt_f32((vy_set - vy_linear) * (vy_set - vy_linear) + (vx_set + vx_linear) * (vx_set + vx_linear), &wheel_speed[3]);
+	arm_sqrt_f32((vy_set + vy_linear) * (vy_set + vy_linear) + (vx_set + vx_linear) * (vx_set + vx_linear), &wheel_speed[0]);
+	arm_sqrt_f32((vy_set + vy_linear) * (vy_set + vy_linear) + (vx_set - vx_linear) * (vx_set - vx_linear), &wheel_speed[1]);
+	arm_sqrt_f32((vy_set - vy_linear) * (vy_set - vy_linear) + (vx_set - vx_linear) * (vx_set - vx_linear), &wheel_speed[2]);
 
 	for (int i = 0; i < 4; i++)
 	{

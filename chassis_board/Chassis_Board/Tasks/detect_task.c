@@ -259,6 +259,14 @@ static void detect_init(uint32_t time)
     //设置离线时间，上线稳定工作时间，优先级 offlineTime onlinetime priority
     uint16_t set_item[ERROR_LIST_LENGHT][3] =
         {
+            {20, 40, 14}, //wheel motor 1
+            {20, 40, 14}, //wheel motor 2
+            {20, 40, 14}, //wheel motor 3
+            {20, 40, 14}, //wheel motor 4
+            {20, 40, 14}, //steer motor 1
+            {20, 40, 14}, //steer motor 2
+            {20, 40, 14}, //steer motor 3
+            {20, 40, 14}, //steer motor 4
             {30, 40, 15}, // RC
             {30, 40, 15}, // NAV
             {2, 3, 7},     // board gyro

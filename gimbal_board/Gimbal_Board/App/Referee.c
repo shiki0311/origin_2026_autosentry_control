@@ -1,25 +1,52 @@
 /**
  ******************************************************************************
  * @file    referee.c
- * @author  Shiki
- * @version V1.8.0
- * @date    2025/03/21
- * @brief
+ * @author  Shiki,Xujinming
+ * @version V1.3.0
+ * @date    2026/2/24
  ******************************************************************************
- * @attention 与裁判系统通信的库文件
+ * @attention
+ *
+ *   依据裁判系统 2026串口协议附录 V1.2.0
  *
  ******************************************************************************
  */
 
 /* Private includes ----------------------------------------------------------*/
 #include "referee.h"
-#include "protocol.h"
 #include "string.h"
 #include "usart.h"
-#include "fifo.h"
 #include "crcs.h"
 #include "bsp_usart.h"
 #include "Cboard_To_Nuc_usbd_communication.h"
+
+typedef enum
+{
+	GAME_STATE_CMD_ID = 0x0001,			 // 比赛状态数据
+	GAME_RESULT_CMD_ID = 0x0002,		 // 比赛结果数据
+	GAME_ROBOT_HP_CMD_ID = 0x0003,		 // 己方机器人血量数据
+	FIELD_EVENTS_CMD_ID = 0x0101,		 // 场地事件数据
+	REFEREE_WARNING_CMD_ID = 0x0104,	 // 裁判警告信息
+	DART_REMAINING_TIME_CMD_ID = 0x0105, // 飞镖发射口倒计时
+
+	ROBOT_STATE_CMD_ID = 0x0201,			  // 比赛机器人状态
+	POWER_HEAT_DATA_CMD_ID = 0x0202,		  // 实时功率热量数据
+	ROBOT_POS_CMD_ID = 0x0203,				  // 机器人位置
+	BUFF_MUSK_CMD_ID = 0x0204,				  // 机器人增益
+	ROBOT_HURT_CMD_ID = 0x0206,				  // 伤害状态
+	SHOOT_DATA_CMD_ID = 0x0207,				  // 实时射击信息
+	BULLET_REMAINING_CMD_ID = 0x0208,		  // 子弹剩余发射数
+	ROBOT_RFID_STATE_CMD_ID = 0x0209,		  // 机器人RFID状态
+	DART_CLIENT_CMD_CMD_ID = 0x020A,		  // 飞镖站状态
+	ROBOT_POSITION_TO_SENTRY = 0x020B,		  // 己方地面机器人位置
+	LADAR_MARK_DATA_CMD_ID = 0x020C,		  // 双方机器人特殊状态
+	SENTRY_INFO_CMD_ID = 0x020D,			  // 哨兵机器人信息
+	LADAR_INFO_CMD_ID = 0x020E,				  // 雷达相关信息
+	STUDENT_INTERACTIVE_DATA_CMD_ID = 0x0301, // 机器人间通信
+	ROBOT_COMMAND_CMD_ID = 0x0303,			  // 小地图下发信息标识
+	CLIENT_MAP_COMMAND_CMD_ID = 0x0305,		  // 小地图接收雷达数据
+	IDCustomData,
+} referee_cmd_id_e;
 
 /* protocol包头结构体 */
 frame_header_struct_t Referee_Receive_Header;
@@ -43,8 +70,11 @@ ext_robot_hurt_t Robot_Hurt;
 ext_shoot_data_t Shoot_Data;
 ext_bullet_remaining_t Bullet_Remaining;
 ext_rfid_status_t RFID_Status;
+dart_client_cmd_t Dart_Client_Cmd;
 ext_ground_robot_position_t Ground_Robot_Position;
+radar_mark_data_t Radar_Mark_Data;
 ext_sentry_info_t Sentry_Info;
+radar_info_t Radar_Info;
 
 /* 0x030X */
 ext_student_interactive_data_t Student_Interactive_Data;
@@ -306,7 +336,8 @@ void Sentry_PushUp_Cmd(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID)
 	Sentry_Auto_Cmd->Interactive_Header.receiver_ID = Referee_Server;	// 接收者ID
 
 	/* 填充 sentry_cmd */
-	Sentry_Auto_Cmd->sentry_cmd.sentry_cmd_data = (uint32_t)0x00000001;
+	Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = ATTACK_MODE; // 设置哨兵为进攻模式,测试用
+	Sentry_Auto_Cmd->sentry_cmd.ensure_revive = 1;  // 请求复活，一直发就行，不会有什么别的影响
 	Sentry_Auto_Cmd->CRC16 = CRC16_Calculate((uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t) - 2); // frame_tail CRC16校验
 
 	HAL_UART_Transmit_DMA(&Referee_UART, (uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t));

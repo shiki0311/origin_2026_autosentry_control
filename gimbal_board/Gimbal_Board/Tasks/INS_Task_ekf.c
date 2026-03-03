@@ -19,9 +19,9 @@
   ****************************(C) COPYRIGHT 2026 Shiki****************************
   */
 
-#include "INS_Task ekf.h"
+#include "INS_Task_ekf.h"
 
-#include "main.h"
+#if USE_EKF == 1
 
 #include "cmsis_os.h"
 
@@ -35,11 +35,9 @@
 #define IMU_temp_PWM(pwm) imu_pwm_set(pwm) // pwm给定
 
 #define BMI088_BOARD_INSTALL_SPIN_MATRIX \
-    {1.0f, 0.0f, 0.0f},                  \
-        {0.0f, 1.0f, 0.0f},              \
-        {0.0f, 0.0f, 1.0f}
-
-
+    {-1.0f, 0.0f, 0.0f},                 \
+        {0.0f, 0.0f, -1.0f},             \
+        {0.0f, -1.0f, 0.0f}
 
 /**
  * @description: 初始化ins task
@@ -93,7 +91,7 @@ extern SPI_HandleTypeDef hspi1;
 
 static TaskHandle_t INS_Task_local_handler;
 
-INS_t INS;
+INS_ekf_t INS;
 
 uint8_t gyro_dma_rx_buf[SPI_DMA_GYRO_LENGHT];
 uint8_t gyro_dma_tx_buf[SPI_DMA_GYRO_LENGHT] = {0x82, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -111,9 +109,11 @@ volatile uint8_t imu_start_dma_flag = 0;
 
 volatile uint8_t imu_read_flag = 0;
 
+uint8_t calibration_done = 0;
+
 bmi088_real_data_t bmi088_real_data;
 
-static fp32 gyro_offset_data[3] = {0.00111132942f, 0.00532476837f, 0.0030484302f}; // 陀螺仪零偏补偿
+fp32 gyro_offset_data[3] = {0.00039f, 0.00498476837f, 0.0030584302f}; // 陀螺仪零偏补偿
 static const fp32 gyro_scale_factor[3][3] = {BMI088_BOARD_INSTALL_SPIN_MATRIX};
 static const fp32 accel_scale_factor[3][3] = {BMI088_BOARD_INSTALL_SPIN_MATRIX};
 // 加速度计低通滤波系数
@@ -128,7 +128,7 @@ static void INS_init(void)
     const fp32 imu_temp_PID[3] = {TEMPERATURE_PID_KP, TEMPERATURE_PID_KI, TEMPERATURE_PID_KD};
     PID_init(&INS.imu_temp_pid, PID_POSITION, imu_temp_PID, TEMPERATURE_PID_MAX_OUT, TEMPERATURE_PID_MAX_IOUT);
 
-    IMU_QuaternionEKF_Init(10, 0.001, 10000000, 1, 0); //初始化卡尔曼滤波
+    IMU_QuaternionEKF_Init(10, 0.001, 6000000, 0.997, 0); // 初始化卡尔曼滤波
 
     DWT_Init(CPU_FREQ_MHZ); // 启动DWT，用于高精度计时
 
@@ -161,14 +161,12 @@ void INS_Task(void const *pvParameters)
     }
 
     INS_init();
-    
+
 #if IMU_CALIBRATION_MODE
     /* ============ IMU校准模式 ============ */
     // 等待温度稳定,然后进行IMU零漂标定
-    static fp32 last_temp = 0.0f;
     static uint16_t temp_stable_count = 0;
-    uint8_t calibration_done = 0;
-    
+    static uint8_t calibration_start = 0;
 
     while (1)
     {
@@ -177,16 +175,18 @@ void INS_Task(void const *pvParameters)
         // 温度控制
         imu_temp_control(bmi088_real_data.temp);
 
+        if (calibration_start && !calibration_done)
+            mpu_offset_clc();
         // 检查温度是否稳定（在目标温度附近）
-        if (!calibration_done)
+        if (!calibration_start)
         {
-            if (fabsf(bmi088_real_data.temp - last_temp) < TEMP_STABLE_THRESHOLD)
+            if (fabsf(bmi088_real_data.temp - IMU_Temp_Set) < TEMP_STABLE_THRESHOLD)
             {
                 temp_stable_count++;
                 if (temp_stable_count >= TEMP_STABLE_TIME_COUNT)
                 {
                     // 温度稳定,开始IMU零漂标定
-                    mpu_offset_clc();
+                    calibration_start = 1;
                 }
             }
             else
@@ -194,32 +194,31 @@ void INS_Task(void const *pvParameters)
                 // 温度变化超过阈值,重新计数
                 temp_stable_count = 0;
             }
-            last_temp = bmi088_real_data.temp;
-        }
-        else
-        {
-            // 标定完成
-            osDelay(100);
         }
     }
 
 #else
     /* ============ 正常姿态解算模式 ============ */
     // 标记是否是第一次进入while(1)循环
-    static uint8_t first_loop_done = 0;
 
     while (1)
     {
+        static uint8_t first_loop_done = 1;
+
         // wait spi DMA tansmit done
         // 等待SPI DMA传输并读取IMU数据
         imu_read_wait_and_fetch();
 
-        uint32_t dt; // 时间间隔
-        if(first_loop_done)
+        float dt; // 时间间隔
+        if (!first_loop_done)
+        {
             dt = DWT_GetDeltaT(&INS.INS_DWT_Count);
-        else{
+        }
+        else
+        {
             dt = 0.001;
             INS.INS_DWT_Count = DWT_GetTimeline_s();
+            first_loop_done = 0;
         }
 
         // 陀螺仪恒温控制
@@ -228,7 +227,7 @@ void INS_Task(void const *pvParameters)
         imu_cali_slove(INS.Gyro, INS.Accel, &bmi088_real_data, gyro_offset_data);
 
         // 加速度计低通滤波
-        fp32 INS_accel_filtered[3] = 0;
+        fp32 INS_accel_filtered[3] = {0};
         Accel_Filter_Update_2D_Out(INS.Accel, accel_fliter_num, INS_accel_filtered);
 
         // 核心函数,EKF更新四元数
@@ -240,11 +239,15 @@ void INS_Task(void const *pvParameters)
         INS.Roll = QEKF_INS.Roll;
         INS.YawTotalAngle = QEKF_INS.YawTotalAngle;
 
-        // 第一次循环执行完成后，释放信号量通知Gimbal_Task启动
-        if (first_loop_done == 0)
+        // 让 EKF 运行若干次以收敛（warm-up），然后再通知 Gimbal_Task 启动
         {
-            first_loop_done = 1;
-            xSemaphoreGive(ins_init_done_semaphore); // 释放信号量
+            static uint16_t ekf_warmup_counter = 0;
+            if (ekf_warmup_counter >= 1000)
+            {
+                xSemaphoreGive(ins_init_done_semaphore); // 释放信号量
+            }
+            else
+                ekf_warmup_counter++;
         }
     }
 
@@ -483,29 +486,25 @@ void DMA2_Stream2_IRQHandler_1(void)
 static void mpu_offset_clc(void)
 {
     static uint16_t i = 0;
-    while (i <= 8000)
+    if (i <= 8000)
     {
-        while (imu_read_flag == 0)
+        if (i < 8000)
         {
+            gyro_offset_data[0] += bmi088_real_data.gyro[0];
+            gyro_offset_data[1] += bmi088_real_data.gyro[1];
+            gyro_offset_data[2] += bmi088_real_data.gyro[2];
         }
-        imu_read_flag = 0;
-        if (gyro_update_flag & (1 << IMU_UPDATE_SHFITS))
+        else if (i == 8000)
         {
-            if (i < 8000)
-            {
-                gyro_update_flag &= ~(1 << IMU_UPDATE_SHFITS);
-                BMI088_gyro_read_over(gyro_dma_rx_buf + BMI088_GYRO_RX_BUF_DATA_OFFSET, bmi088_real_data.gyro);
-                gyro_offset_data[0] += bmi088_real_data.gyro[0];
-                gyro_offset_data[1] += bmi088_real_data.gyro[1];
-                gyro_offset_data[2] += bmi088_real_data.gyro[2];
-            }
-            else if (i == 8000)
-            {
-                gyro_offset_data[0] = gyro_offset_data[0] / 8000.0f;
-                gyro_offset_data[1] = gyro_offset_data[1] / 8000.0f;
-                gyro_offset_data[2] = gyro_offset_data[2] / 8000.0f;
-            }
-            i++;
+            gyro_offset_data[0] = gyro_offset_data[0] / 8000.0f;
+            gyro_offset_data[1] = gyro_offset_data[1] / 8000.0f;
+            gyro_offset_data[2] = gyro_offset_data[2] / 8000.0f;
+
+            // 标定完成
+            calibration_done = 1;
         }
+        i++;
     }
 }
+
+#endif

@@ -17,15 +17,15 @@
 #define MOTOR_DISTANCE_LENGTH 0.41f // 底盘较长的轮距
 #define WHEEL_RADIUS 0.06f  //舵轮半径
 #define MOTOR_REDUCTION_RATIO 13.72f  // 轮电机减速比
-#define CHASSIS_FOLLOW_GIMBAL_BACK_ZERO 188.55f  //底盘跟随云台时的后零点，单位：度
-#define CHASSIS_FOLLOW_GIMBAL_RIGHT_ZERO 278.55f // 底盘跟随云台时的右零点
-#define CHASSIS_FOLLOW_GIMBAL_LEFT_ZERO 98.55f  // 底盘跟随云台时的左零点
-#define CHASSIS_FOLLOW_GIMBAL_ZERO 8.55f       // 底盘跟随云台时的零点，同时也是小陀螺模式下底盘vx(前进)正方向
+#define CHASSIS_FOLLOW_GIMBAL_BACK_ZERO 98.55f  //底盘跟随云台时的后零点，单位：度
+#define CHASSIS_FOLLOW_GIMBAL_RIGHT_ZERO 188.55f // 底盘跟随云台时的右零点
+#define CHASSIS_FOLLOW_GIMBAL_LEFT_ZERO 8.55f  // 底盘跟随云台时的左零点
+#define CHASSIS_FOLLOW_GIMBAL_ZERO 278.55f       // 底盘跟随云台时的零点，同时也是小陀螺模式下底盘vx(前进)正方向
 
-#define STEER_MOROR1_ENC_OFFSET 30 //1号舵电机的编码器偏置（范围0-8191）
-#define STEER_MOROR2_ENC_OFFSET 5606 //2号舵电机的编码器偏置（范围0-8191）
-#define STEER_MOROR3_ENC_OFFSET 6834 //3号舵电机的编码器偏置（范围0-8191）
-#define STEER_MOROR4_ENC_OFFSET 4065 //4号舵电机的编码器偏置（范围0-8191）
+#define STEER_MOROR1_ENC_OFFSET 2097 //1号舵电机的编码器偏置（范围0-8191）
+#define STEER_MOROR2_ENC_OFFSET 7585 //2号舵电机的编码器偏置（范围0-8191）
+#define STEER_MOROR3_ENC_OFFSET 807 //3号舵电机的编码器偏置（范围0-8191）
+#define STEER_MOROR4_ENC_OFFSET 6112 //4号舵电机的编码器偏置（范围0-8191）
 
 //小陀螺相关参数
 #define ROTATE_WZ_MAX 12.0  // 小陀螺正向速度,高速，单位：rad/s
@@ -34,7 +34,7 @@
 #define ROTATE_SAVE_ENERGY 0.3f     // 哨兵未被弹丸击打时将目标小陀螺转速乘以此系数，达到低速小陀螺省功率的效果
 #define ROTATE_MOVE_FF_HIGH_SPEED 0.04f // 高速小陀螺模式下的前馈系数
 #define ROTATE_MOVE_FF_LOW_SPEED 0.02f  //低速率小陀螺模式下的前馈系数
-#define NAV_MAX_SPEED 4.0f // 导航模式下底盘最大速度，单位m/s
+#define NAV_MAX_SPEED 3.5f // 导航模式下底盘最大速度，单位m/s
 
 //底盘控制参数（pid,前馈）
 #define WHEEL_MOTOR_SPEED_PID_KP 10.5f
@@ -43,14 +43,14 @@
 #define WHEEL_MOTOR_SPEED_PID_MAX_OUT 16000.0f
 #define WHEEL_MOTOR_SPEED_PID_MAX_IOUT 2000.0f
 
-#define STEER_MOTOR_SPEED_PID_KP 100.0f
+#define STEER_MOTOR_SPEED_PID_KP 80.0f
 #define STEER_MOTOR_SPEED_PID_KI 0.02f 
 #define STEER_MOTOR_SPEED_PID_KD 0.0f
 #define STEER_MOTOR_SPEED_PID_MAX_OUT 16000.0f
 #define STEER_MOTOR_SPEED_PID_MAX_IOUT 1000.0f
-#define STEER_MOTOR_SPEED_FF 1.4f // 舵轮电机速度前馈系数
+#define STEER_MOTOR_SPEED_FF 3.4f // 舵轮电机速度前馈系数
 
-#define STEER_MOTOR_ANGLE_PID_KP 10.0f
+#define STEER_MOTOR_ANGLE_PID_KP 12.0f
 #define STEER_MOTOR_ANGLE_PID_KI 0.0002f
 #define STEER_MOTOR_ANGLE_PID_KD 1.5f
 #define STEER_MOTOR_ANGLE_PID_MAX_OUT 1500.0f

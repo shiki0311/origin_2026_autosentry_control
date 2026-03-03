@@ -21,9 +21,9 @@
   ****************************(C) COPYRIGHT 2019 DJI****************************
   */
 
-#include "INS_Task.h"
+#include "INS_Task_Mahony.h"
 
-#include "main.h"
+#if USE_EKF == 0
 
 #include "cmsis_os.h"
 
@@ -31,19 +31,17 @@
 #include "bsp_spi.h"
 #include "bmi088driver.h"
 #include "ist8310driver.h"
-#include "pid.h"
 #include "ahrs.h"
 
-//#include "calibrate_task.h"
 #include "detect_task.h"
 
 
 #define IMU_temp_PWM(pwm)  imu_pwm_set(pwm)                    //pwm给定
 
 #define BMI088_BOARD_INSTALL_SPIN_MATRIX    \
-    {1.0f, 0.0f, 0.0f},                     \
-    {0.0f, 1.0f, 0.0f},                     \
-    {0.0f, 0.0f, 1.0f}                     \
+    {-1.0f, 0.0f, 0.0f},                     \
+    {0.0f, 0.0f, -1.0f},                     \
+    {0.0f, -1.0f, 0.0f}                     \
 
 
 #define IST8310_BOARD_INSTALL_SPIN_MATRIX   \
@@ -152,11 +150,11 @@ fp32 mag_offset[3];
 fp32 mag_cali_offset[3];
 
 static uint8_t first_temperate;
-static const fp32 imu_temp_PID[3] = {TEMPERATURE_PID_KP, TEMPERATURE_PID_KI, TEMPERATURE_PID_KD};
-pid_type_def imu_temp_pid;
+static const fp32 imu_temp_pid[3] = {TEMPERATURE_PID_KP, TEMPERATURE_PID_KI, TEMPERATURE_PID_KD};
 
 static const float timing_time = 0.001f;   //tast run time , unit s.任务运行的时间 单位 s
 
+INS_mahony_t INS;
 
 //加速度计低通滤波
 static fp32 accel_fliter_1[3] = {0.0f, 0.0f, 0.0f};
@@ -164,15 +162,9 @@ static fp32 accel_fliter_2[3] = {0.0f, 0.0f, 0.0f};
 static fp32 accel_fliter_3[3] = {0.0f, 0.0f, 0.0f};
 static const fp32 fliter_num[3] = {1.929454039488895f, -0.93178349823448126f, 0.002329458745586203f};
 
-
-
-
-static fp32 INS_gyro[3] = {0.0f, 0.0f, 0.0f};
-fp32 INS_accel[3] = {0.0f, 0.0f, 0.0f};
 static fp32 INS_mag[3] = {0.0f, 0.0f, 0.0f};
 static fp32 INS_quat[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 fp32 INS_angle[3] = {0.0f, 0.0f, 0.0f};      //euler angle, unit rad.欧拉角 单位 rad
-fp32 INS_angle_deg[3] = {0.0f, 0.0f, 0.0f};
 
 
 
@@ -207,14 +199,11 @@ void INS_Task(void const *pvParameters)
 		
     BMI088_read(bmi088_real_data.gyro, bmi088_real_data.accel, &bmi088_real_data.temp);
     //rotate and zero drift 
-    imu_cali_slove(INS_gyro, INS_accel, INS_mag, &bmi088_real_data, &ist8310_real_data);
+    imu_cali_slove(INS.Gyro, INS.Accel, INS_mag, &bmi088_real_data, &ist8310_real_data);
 
-    PID_init(&imu_temp_pid, PID_POSITION, imu_temp_PID, TEMPERATURE_PID_MAX_OUT, TEMPERATURE_PID_MAX_IOUT);
-    AHRS_init(INS_quat, INS_accel, INS_mag);
+    PID_init(&INS.imu_temp_pid, PID_POSITION, imu_temp_pid, TEMPERATURE_PID_MAX_OUT, TEMPERATURE_PID_MAX_IOUT);
+    AHRS_init(INS_quat, INS.Accel, INS_mag);
 
-//    accel_fliter_1[0] = accel_fliter_2[0] = accel_fliter_3[0] = INS_accel[0];
-//    accel_fliter_1[1] = accel_fliter_2[1] = accel_fliter_3[1] = INS_accel[1];
-//    accel_fliter_1[2] = accel_fliter_2[2] = accel_fliter_3[2] = INS_accel[2];
     //get the handle of task
     //获取当前任务的任务句柄，
     INS_Task_local_handler = xTaskGetHandle(pcTaskGetName(NULL));
@@ -232,10 +221,10 @@ void INS_Task(void const *pvParameters)
 
     imu_start_dma_flag = 1;
 
-    bmi088_offset_data.gyro[0] = 0.00111132942f;
-    bmi088_offset_data.gyro[1] = 0.00532476837f;
-    bmi088_offset_data.gyro[2] = 0.0030484302f;
-//    mpu_offset_clc();
+    bmi088_offset_data.gyro[0] = 0.00039f;
+    bmi088_offset_data.gyro[1] = 0.00498476837;
+    bmi088_offset_data.gyro[2] = 0.0030584302f;
+    //    mpu_offset_clc();
 
     // 标记是否是第一次进入while(1)循环
     static uint8_t first_loop_done = 0;
@@ -272,7 +261,7 @@ void INS_Task(void const *pvParameters)
         }
 
         //rotate and zero drift 
-        imu_cali_slove(INS_gyro, INS_accel, INS_mag, &bmi088_real_data, &ist8310_real_data);
+        imu_cali_slove(INS.Gyro, INS.Accel, INS_mag, &bmi088_real_data, &ist8310_real_data);
 
 
         //加速度计低通滤波
@@ -280,26 +269,25 @@ void INS_Task(void const *pvParameters)
         accel_fliter_1[0] = accel_fliter_2[0];
         accel_fliter_2[0] = accel_fliter_3[0];
 
-        accel_fliter_3[0] = accel_fliter_2[0] * fliter_num[0] + accel_fliter_1[0] * fliter_num[1] + INS_accel[0] * fliter_num[2];
+        accel_fliter_3[0] = accel_fliter_2[0] * fliter_num[0] + accel_fliter_1[0] * fliter_num[1] + INS.Accel[0] * fliter_num[2];
 
         accel_fliter_1[1] = accel_fliter_2[1];
         accel_fliter_2[1] = accel_fliter_3[1];
 
-        accel_fliter_3[1] = accel_fliter_2[1] * fliter_num[0] + accel_fliter_1[1] * fliter_num[1] + INS_accel[1] * fliter_num[2];
+        accel_fliter_3[1] = accel_fliter_2[1] * fliter_num[0] + accel_fliter_1[1] * fliter_num[1] + INS.Accel[1] * fliter_num[2];
 
         accel_fliter_1[2] = accel_fliter_2[2];
         accel_fliter_2[2] = accel_fliter_3[2];
 
-        accel_fliter_3[2] = accel_fliter_2[2] * fliter_num[0] + accel_fliter_1[2] * fliter_num[1] + INS_accel[2] * fliter_num[2];
+        accel_fliter_3[2] = accel_fliter_2[2] * fliter_num[0] + accel_fliter_1[2] * fliter_num[1] + INS.Accel[2] * fliter_num[2];
 
 		
-			//AHRS_update(INS_quat, timing_time, bmi088_real_data.gyro, bmi088_real_data.accel, ist8310_real_data.mag);
-			AHRS_update(INS_quat, timing_time, INS_gyro, accel_fliter_3, INS_mag);
-			get_angle(INS_quat, INS_angle + INS_YAW_ADDRESS_OFFSET, INS_angle + INS_PITCH_ADDRESS_OFFSET, INS_angle + INS_ROLL_ADDRESS_OFFSET);
+			AHRS_update(INS_quat, timing_time, INS.Gyro, accel_fliter_3, INS_mag);
+			get_angle(INS_quat, INS_angle + AXIS_Z, INS_angle + AXIS_Y, INS_angle + AXIS_X);
 	
-			INS_angle_deg[0] = INS_angle[0] * 180.0f / 3.141592653589f;
-			INS_angle_deg[1] = INS_angle[1] * 180.0f / 3.141592653589f;
-			INS_angle_deg[2] = INS_angle[2] * 180.0f / 3.141592653589f;
+			INS.Yaw = INS_angle[AXIS_Z] * 180.0f / 3.141592653589f;
+			INS.Pitch = INS_angle[AXIS_Y] * 180.0f / 3.141592653589f;
+			INS.Roll = INS_angle[AXIS_X] * 180.0f / 3.141592653589f;
 
       // 第一次循环执行完成后，释放信号量通知Gimbal_Task启动
      if (first_loop_done == 0)
@@ -358,12 +346,12 @@ static void imu_temp_control(fp32 temp)
     static uint8_t temp_constant_time = 0;
     if (first_temperate)
     {
-        PID_calc(&imu_temp_pid, temp, IMU_Temp_Set);
-        if (imu_temp_pid.out < 0.0f)
+        PID_calc(&INS.imu_temp_pid, temp, IMU_Temp_Set);
+        if (INS.imu_temp_pid.out < 0.0f)
         {
-            imu_temp_pid.out = 0.0f;
+            INS.imu_temp_pid.out = 0.0f;
         }
-        tempPWM = (uint16_t)imu_temp_pid.out;
+        tempPWM = (uint16_t)INS.imu_temp_pid.out;
         IMU_temp_PWM(tempPWM);
     }
     else
@@ -378,169 +366,13 @@ static void imu_temp_control(fp32 temp)
                 //达到设置温度，将积分项设置为一半最大功率，加速收敛
                 //
                 first_temperate = 1;
-                imu_temp_pid.Iout = MPU6500_TEMP_PWM_MAX / 2.0f;
+                INS.imu_temp_pid.Iout = MPU6500_TEMP_PWM_MAX / 2.0f;
             }
         }
 
         IMU_temp_PWM(MPU6500_TEMP_PWM_MAX - 1);
     }
 }
-
-/**
-  * @brief          calculate gyro zero drift
-  * @param[out]     gyro_offset:zero drift
-  * @param[in]      gyro:gyro data
-  * @param[out]     offset_time_count: +1 auto
-  * @retval         none
-  */
-/**
-  * @brief          计算陀螺仪零漂
-  * @param[out]     gyro_offset:计算零漂
-  * @param[in]      gyro:角速度数据
-  * @param[out]     offset_time_count: 自动加1
-  * @retval         none
-  */
-void gyro_offset_calc(fp32 gyro_offset[3], fp32 gyro[3], uint16_t *offset_time_count)
-{
-    if (gyro_offset == NULL || gyro == NULL || offset_time_count == NULL)
-    {
-        return;
-    }
-
-        gyro_offset[0] = gyro_offset[0] + 0.00005f * gyro[0];
-        gyro_offset[1] = gyro_offset[1] + 0.00005f * gyro[1];
-        gyro_offset[2] = gyro_offset[2] + 0.00005f * gyro[2];
-        (*offset_time_count)++;
-}
-
-/**
-  * @brief          calculate gyro zero drift
-  * @param[out]     cali_scale:scale, default 1.0
-  * @param[out]     cali_offset:zero drift, collect the gyro ouput when in still
-  * @param[out]     time_count: time, when call gyro_offset_calc 
-  * @retval         none
-  */
-/**
-  * @brief          校准陀螺仪
-  * @param[out]     陀螺仪的比例因子，1.0f为默认值，不修改
-  * @param[out]     陀螺仪的零漂，采集陀螺仪的静止的输出作为offset
-  * @param[out]     陀螺仪的时刻，每次在gyro_offset调用会加1,
-  * @retval         none
-  */
-void INS_cali_gyro(fp32 cali_scale[3], fp32 cali_offset[3], uint16_t *time_count)
-{
-        if( *time_count == 0)
-        {
-            gyro_offset[0] = gyro_cali_offset[0];
-            gyro_offset[1] = gyro_cali_offset[1];
-            gyro_offset[2] = gyro_cali_offset[2];
-        }
-        gyro_offset_calc(gyro_offset, INS_gyro, time_count);
-
-        cali_offset[0] = gyro_offset[0];
-        cali_offset[1] = gyro_offset[1];
-        cali_offset[2] = gyro_offset[2];
-        cali_scale[0] = 1.0f;
-        cali_scale[1] = 1.0f;
-        cali_scale[2] = 1.0f;
-
-}
-
-/**
-  * @brief          get gyro zero drift from flash
-  * @param[in]      cali_scale:scale, default 1.0
-  * @param[in]      cali_offset:zero drift, 
-  * @retval         none
-  */
-/**
-  * @brief          校准陀螺仪设置，将从flash或者其他地方传入校准值
-  * @param[in]      陀螺仪的比例因子，1.0f为默认值，不修改
-  * @param[in]      陀螺仪的零漂
-  * @retval         none
-  */
-void INS_set_cali_gyro(fp32 cali_scale[3], fp32 cali_offset[3])
-{
-    gyro_cali_offset[0] = cali_offset[0];
-    gyro_cali_offset[1] = cali_offset[1];
-    gyro_cali_offset[2] = cali_offset[2];
-    gyro_offset[0] = gyro_cali_offset[0];
-    gyro_offset[1] = gyro_cali_offset[1];
-    gyro_offset[2] = gyro_cali_offset[2];
-}
-
-/**
-  * @brief          get the quat
-  * @param[in]      none
-  * @retval         the point of INS_quat
-  */
-/**
-  * @brief          获取四元数
-  * @param[in]      none
-  * @retval         INS_quat的指针
-  */
-const fp32 *get_INS_quat_point(void)
-{
-    return INS_quat;
-}
-/**
-  * @brief          get the euler angle, 0:yaw, 1:pitch, 2:roll unit rad
-  * @param[in]      none
-  * @retval         the point of INS_angle
-  */
-/**
-  * @brief          获取欧拉角, 0:yaw, 1:pitch, 2:roll 单位 rad
-  * @param[in]      none
-  * @retval         INS_angle的指针
-  */
-const fp32 *get_INS_angle_point(void)
-{
-    return INS_angle;
-}
-
-/**
-  * @brief          get the rotation speed, 0:x-axis, 1:y-axis, 2:roll-axis,unit rad/s
-  * @param[in]      none
-  * @retval         the point of INS_gyro
-  */
-/**
-  * @brief          获取角速度,0:x轴, 1:y轴, 2:roll轴 单位 rad/s
-  * @param[in]      none
-  * @retval         INS_gyro的指针
-  */
-extern const fp32 *get_gyro_data_point(void)
-{
-    //return INS_gyro;
-		return bmi088_real_data.gyro;
-}
-/**
-  * @brief          get aceel, 0:x-axis, 1:y-axis, 2:roll-axis unit m/s2
-  * @param[in]      none
-  * @retval         the point of INS_accel
-  */
-/**
-  * @brief          获取加速度,0:x轴, 1:y轴, 2:roll轴 单位 m/s2
-  * @param[in]      none
-  * @retval         INS_accel的指针
-  */
-extern const fp32 *get_accel_data_point(void)
-{
-    return INS_accel;
-}
-/**
-  * @brief          get mag, 0:x-axis, 1:y-axis, 2:roll-axis unit ut
-  * @param[in]      none
-  * @retval         the point of INS_mag
-  */
-/**
-  * @brief          获取加速度,0:x轴, 1:y轴, 2:roll轴 单位 ut
-  * @param[in]      none
-  * @retval         INS_mag的指针
-  */
-extern const fp32 *get_mag_data_point(void)
-{
-    return INS_mag;
-}
-
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
@@ -736,3 +568,5 @@ void mpu_offset_clc(void)
 			}
 	}
 }
+
+#endif

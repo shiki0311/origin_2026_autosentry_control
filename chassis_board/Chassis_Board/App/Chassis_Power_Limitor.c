@@ -8,6 +8,7 @@
 *****************************************************************************************************************************/
 #include "Chassis_Power_Limitor.h"
 #include "user_common_lib.h"
+#include "detect_task.h"
 /*****************************************************************************************************************************
 /* 功率控制器参数 */
 #define MAX_CMD_CURRENT 16384.0f        // 经过功率控制后的最大控制电流
@@ -160,14 +161,15 @@ static float Calculate_Initial_Power(power_limitor_t *power_limiter, const chass
                               power_limiter->wheel_motors.k_t * wheel_motor[i].give_current * wheel_motor[i].give_current +
                               power_limiter->wheel_motors.p_static;
 
-        if (initial_wheel_power < 0)
+        if (initial_wheel_power < 0 || toe_is_error(WHEEL_MOTOR_1_TOE + i)) // 如果功率小于0或者对应电机通讯丢失，认为该电机功率为0
             initial_wheel_power = 0;
 
         initial_steer_power = power_limiter->steer_motors.k_p * steer_motor[i].give_current * steer_motor[i].speed_now +
                               power_limiter->steer_motors.k_w * steer_motor[i].speed_now * steer_motor[i].speed_now +
                               power_limiter->steer_motors.k_t * steer_motor[i].give_current * steer_motor[i].give_current +
                               power_limiter->steer_motors.p_static;
-        if (initial_steer_power < 0)
+
+        if (initial_steer_power < 0 || toe_is_error(STEER_MOTOR_1_TOE + i)) // 如果功率小于0或者对应电机通讯丢失，认为该电机功率为0
             initial_steer_power = 0;
 
         initial_total_power += (initial_wheel_power + initial_steer_power);
@@ -235,14 +237,14 @@ static float Calculate_Power_With_Alpha(power_limitor_t *power_limiter)
                             power_limiter->wheel_motors.linear_coeff[i] * power_limiter->wheel_motors.alpha[i] +
                             power_limiter->wheel_motors.constant[i];
 
-        if (alpha_wheel_power < 0)
+        if (alpha_wheel_power < 0 || toe_is_error(WHEEL_MOTOR_1_TOE + i)) // 如果功率小于0或者对应电机通讯丢失，认为该电机功率为0
             alpha_wheel_power = 0;
 
         alpha_steer_power = power_limiter->steer_motors.quadratic_coeff[i] * power_limiter->steer_motors.alpha[i] * power_limiter->steer_motors.alpha[i] +
                             power_limiter->steer_motors.linear_coeff[i] * power_limiter->steer_motors.alpha[i] +
                             power_limiter->steer_motors.constant[i];
 
-        if (alpha_steer_power < 0)
+        if (alpha_steer_power < 0 || toe_is_error(STEER_MOTOR_1_TOE + i)) // 如果功率小于0或者对应电机通讯丢失，认为该电机功率为0
             alpha_steer_power = 0;
 
         alpha_total_power += (alpha_wheel_power + alpha_steer_power);

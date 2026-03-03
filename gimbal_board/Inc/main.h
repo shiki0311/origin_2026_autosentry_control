@@ -53,6 +53,8 @@ extern "C" {
   void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+#define USE_EKF 1 // 1为使用ekf版本的INS_task，0为使用mahony版本的INS_task
+
 #define BUTTON_TRIG_Pin GPIO_PIN_7
 #define BUTTON_TRIG_GPIO_Port GPIOI
 #define LASER_Pin GPIO_PIN_8

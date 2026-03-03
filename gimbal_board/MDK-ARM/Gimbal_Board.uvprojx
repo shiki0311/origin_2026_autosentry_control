@@ -704,11 +704,6 @@
               <FilePath>..\Gimbal_Board\Tasks\detect_task.c</FilePath>
             </File>
             <File>
-              <FileName>INS_Task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Gimbal_Board\Tasks\INS_Task.c</FilePath>
-            </File>
-            <File>
               <FileName>LED_Task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Gimbal_Board\Tasks\LED_Task.c</FilePath>
@@ -717,11 +712,6 @@
               <FileName>referee_usart_task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Gimbal_Board\Tasks\referee_usart_task.c</FilePath>
-            </File>
-            <File>
-              <FileName>Gimbal_Task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Gimbal_Board\Tasks\Gimbal_Task.c</FilePath>
             </File>
             <File>
               <FileName>Can_Timer_Task.c</FileName>
@@ -737,6 +727,21 @@
               <FileName>Shoot_Task.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Gimbal_Board\Tasks\Shoot_Task.c</FilePath>
+            </File>
+            <File>
+              <FileName>Gimbal_Task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Gimbal_Board\Tasks\Gimbal_Task.c</FilePath>
+            </File>
+            <File>
+              <FileName>INS_Task_ekf.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Gimbal_Board\Tasks\INS_Task_ekf.c</FilePath>
+            </File>
+            <File>
+              <FileName>INS_Task_Mahony.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Gimbal_Board\Tasks\INS_Task_Mahony.c</FilePath>
             </File>
           </Files>
         </Group>

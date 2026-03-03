@@ -24,7 +24,13 @@
 /* USER CODE BEGIN Includes */
 #include "Cboard_To_Nuc_usbd_communication.h"
 #include "remote_control.h"
-#include "INS_Task.h"
+
+#if USE_EKF == 1
+#include "INS_Task_ekf.h"
+#else
+#include "INS_Task_Mahony.h"
+#endif
+
 #include "referee_usart_task.h"
 /* USER CODE END Includes */
 

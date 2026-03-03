@@ -8,7 +8,13 @@
 #include "Gimbal_Task.h"
 #include "main.h"
 #include "cmsis_os.h"
-#include "INS_Task.h"
+
+#if USE_EKF == 1
+#include "INS_Task_ekf.h"
+#else
+#include "INS_Task_Mahony.h"
+#endif
+
 #include "remote_control.h"
 #include "bsp_can_gimbal.h"
 #include "bsp_DMIMU.h"
@@ -148,8 +154,9 @@ static void Gimbal_Data_Update(void)
 {
     gimbal_small_yaw_motor.INS_angle_set_last = gimbal_small_yaw_motor.INS_angle_set;
     gimbal_small_yaw_motor.INS_speed_set_last = gimbal_small_yaw_motor.INS_speed_set;
-    gimbal_small_yaw_motor.INS_speed_now = -bmi088_real_data.gyro[1] * RAD_TO_DEGREE; // 单位度每秒
-    gimbal_small_yaw_motor.INS_angle_now = INS_angle_deg[0];
+
+    gimbal_small_yaw_motor.INS_speed_now = (-arm_sin_f32(INS.Pitch * DEGREE_TO_RAD) * INS.Gyro[AXIS_X] + arm_cos_f32(INS.Pitch * DEGREE_TO_RAD) * INS.Gyro[AXIS_Z]) * RAD_TO_DEGREE; // 单位度每秒
+    gimbal_small_yaw_motor.INS_angle_now = INS.Yaw;
 
     // 处理小yaw电机位置编码器值的跳变问题
     if (SMALL_YAW_MIDDLE_ENC_ZERO < 1500 && motor_measure_small_yaw.ecd > 6692)
@@ -167,9 +174,15 @@ static void Gimbal_Data_Update(void)
 
     gimbal_pitch_motor.INS_angle_set_last = gimbal_pitch_motor.INS_angle_set;
     gimbal_pitch_motor.INS_speed_set_last = gimbal_pitch_motor.INS_speed_set;
-    gimbal_pitch_motor.INS_speed_now = bmi088_real_data.gyro[2] * RAD_TO_DEGREE; // 单位度每秒
-    gimbal_pitch_motor.INS_angle_now = INS_angle_deg[2];
-    gimbal_pitch_motor.ENC_angle_now = motor_measure_pitch.ecd * GM6020_ENC_TO_DEGREE;
+    gimbal_pitch_motor.INS_speed_now = -INS.Gyro[AXIS_Y] * RAD_TO_DEGREE; // 单位度每秒
+    gimbal_pitch_motor.INS_angle_now = -INS.Pitch;
+    // 处理小yaw电机位置编码器值的跳变问题
+    if (PITCH_ECD_ANGLE_MAX < 1300 && motor_measure_pitch.ecd > 6800)
+        gimbal_pitch_motor.ENC_angle_now = (motor_measure_pitch.ecd - 8192) * GM6020_ENC_TO_DEGREE;
+    else if (PITCH_ECD_ANGLE_MIN > 6800 && motor_measure_pitch.ecd < 1300)
+        gimbal_pitch_motor.ENC_angle_now = (motor_measure_pitch.ecd + 8192) * GM6020_ENC_TO_DEGREE;
+    else
+        gimbal_pitch_motor.ENC_angle_now = motor_measure_pitch.ecd * GM6020_ENC_TO_DEGREE;
 
     gimbal_control.gimbal_mode_last = gimbal_control.gimbal_mode;
 }
@@ -475,7 +488,7 @@ static void gimbal_nav_pass_bumpy_handler(void)
     gimbal_small_yaw_motor.INS_angle_set = NUC_Data_Receive.pass_bumpy_yaw_angle;
     gimbal_small_yaw_motor.INS_angle_set = Find_Yaw_Min_Angle(gimbal_small_yaw_motor.INS_angle_set, gimbal_small_yaw_motor.INS_angle_now);
     Calculate_Gimbal_Motor_Target_Current(&gimbal_small_yaw_motor.angle_pid, POSITION_INS, SMALL_YAW_MOTOR, gimbal_small_yaw_motor.INS_angle_now, gimbal_small_yaw_motor.INS_angle_set);
-    
+
     fp32 big_yaw_follow_angle = SMALL_YAW_MIDDLE_ENC_ZERO * GM6020_ENC_TO_DEGREE - gimbal_small_yaw_motor.ENC_angle_now;
     Calculate_Gimbal_Motor_Target_Current(&DM_big_yaw_motor.follow_small_yaw_pid, POSITION_ENC, BIG_YAW_MOTOR, big_yaw_follow_angle, 0);
 
@@ -495,7 +508,7 @@ static void gimbal_autoaim_handler(void)
 {
     gimbal_control.big_yaw_mode = POSITION_INS, gimbal_control.small_yaw_mode = POSITION_INS, gimbal_control.pitch_mode = POSITION_INS;
 
-    gimbal_control.last_yaw_auto_aim= NUC_Data_Receive.yaw_aim;
+    gimbal_control.last_yaw_auto_aim = NUC_Data_Receive.yaw_aim;
 }
 
 /**
@@ -552,7 +565,7 @@ static void gimbal_remote_control_handler(void)
         gimbal_small_yaw_motor.INS_speed_set = -(float)rc_ctrl.rc.ch[0] / 660.0f * REMOTE_CONTROL_YAW_MAX_SPEED * RAD_TO_DEGREE;
         Calculate_Gimbal_Motor_Target_Current(&gimbal_small_yaw_motor.speed_pid, SPEED, SMALL_YAW_MOTOR, gimbal_small_yaw_motor.INS_speed_now, gimbal_small_yaw_motor.INS_speed_set);
     }
-    else if (gimbal_control.small_yaw_mode == POSITION_INS) 
+    else if (gimbal_control.small_yaw_mode == POSITION_INS)
     {
         if (small_yaw_mode_last == SPEED || gimbal_control.gimbal_mode_last != GIMBAL_REMOTE_CONTROL)
         {
@@ -619,6 +632,7 @@ void Gimbal_Task(void const *argument)
 
         //      Ctrl_DM_Motor(0, 0, 0, 0, 0);
         Ctrl_DM_Motor(0, 0, 0, 0, DM_big_yaw_motor.target_current);
+			
         Allocate_Can_Msg(gimbal_small_yaw_motor.give_current, gimbal_pitch_motor.give_current, 0, 0, CAN_SMALL_YAW_AND_PITCH_CMD);
         //		Allocate_Can_Msg(0, 0, 0, 0, CAN_SMALL_YAW_AND_PITCH_CMD);
 

@@ -14,7 +14,8 @@
 #define GM6020_ENC_TO_DEGREE 0.043945f //  360/8192
 /****************************************重力补偿参数*******************************************************/
 #define PITCH_MOTOR_GRAVITY_STATIC_COMPENSATE (4600) // 用于补偿重力，pitch轴质心与转轴的连线与地面平行时抵消重力所需的力矩，单位是发给6020电机的目标电流
-#define PITCH_CENTROID_OFFSET_ANGLE 50.31f // 补偿pitch的ENC_angle
+// #define PITCH_CENTROID_OFFSET_ANGLE 50.31f // 补偿pitch的ENC_angle
+#define PITCH_CENTROID_OFFSET_ANGLE -10.28313f // 补偿pitch的ENC_angle
 /**************************************************PID,前馈系数************************************************************************/
 #define BIG_YAW_MOTOR_SPEED_PID_KP 0.1f
 #define BIG_YAW_MOTOR_SPEED_PID_KI 0.0002f // 80.0f
@@ -36,7 +37,7 @@
 #define BIG_YAW_MOTOR_FOLLOW_SMALL_YAW_PID_MAX_OUT 1200.0f
 #define BIG_YAW_MOTOR_FOLLOW_SMALL_YAW_PID_MAX_IOUT 100.0f
 
-#define SMALL_YAW_MOTOR_SPEED_PID_KP 200.0f
+#define SMALL_YAW_MOTOR_SPEED_PID_KP 180.0f //200
 #define SMALL_YAW_MOTOR_SPEED_PID_KI 0.01f 
 #define SMALL_YAW_MOTOR_SPEED_PID_KD 5.0f
 #define SMALL_YAW_MOTOR_SPEED_PID_MAX_OUT 15000.0f
@@ -44,9 +45,9 @@
 #define SMALL_YAW_MOTOR_SPEED_FF 4.0f
 #define SMALL_YAW_MOTOR_CURRENT_FF 0.02f
 
-#define SMALL_YAW_MOTOR_ANGLE_PID_KP 20.0f
+#define SMALL_YAW_MOTOR_ANGLE_PID_KP 10.0f //20
 #define SMALL_YAW_MOTOR_ANGLE_PID_KI 0.0f
-#define SMALL_YAW_MOTOR_ANGLE_PID_KD 20.0f
+#define SMALL_YAW_MOTOR_ANGLE_PID_KD 10.0f  //20
 #define SMALL_YAW_MOTOR_ANGLE_PID_MAX_OUT 2000.0f
 #define SMALL_YAW_MOTOR_ANGLE_PID_MAX_IOUT 100.0f
 
@@ -83,8 +84,10 @@
 #define SMALL_YAW_AUTOAIM_ECD_MAX 5561
 #define SMALL_YAW_AUTOAIM_ECD_MIN 4365
 
-#define PITCH_ECD_ANGLE_MAX (3146*GM6020_ENC_TO_DEGREE) //pitch轴电子限位最大角度，用编码器值标定
-#define PITCH_ECD_ANGLE_MIN (1908*GM6020_ENC_TO_DEGREE) //pitch轴电子限位最小角度，用编码器值标定
+// #define PITCH_ECD_ANGLE_MAX (3146*GM6020_ENC_TO_DEGREE) //pitch轴电子限位最大角度，用编码器值标定
+// #define PITCH_ECD_ANGLE_MIN (1908*GM6020_ENC_TO_DEGREE) //pitch轴电子限位最小角度，用编码器值标定
+#define PITCH_ECD_ANGLE_MAX (1800 * GM6020_ENC_TO_DEGREE) // pitch轴电子限位最大角度，用编码器值标定
+#define PITCH_ECD_ANGLE_MIN (530 * GM6020_ENC_TO_DEGREE) // pitch轴电子限位最小角度，用编码器值标定
 
 #define PITCH_NAV_SEEK_ENEMY_ANGLE_MAX 15.0f 
 #define PITCH_NAV_SEEK_ENEMY_ANGLE_MIN -22.0f 

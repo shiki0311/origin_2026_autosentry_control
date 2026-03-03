@@ -37,15 +37,13 @@ shoot_control_t shoot_control = {
 	.cooling_limit_cnt = 0};
 /*****************************************************************根据裁判系统发射数据进行弹速闭环********************************************************************************/
 #define HAVE_REFEREE_SYSTEM 0 // 哨兵当前是否安装裁判系统
+#define DEBUG_MODE 1 //日常调试1，比赛前改0
 
 #if HAVE_REFEREE_SYSTEM
 #define USE_REFEREE_BULLET_SPEED_LOOP 1 // 1:对裁判系统传回的弹速闭环，外环控弹速（因为裁判系统传回的弹速数据是发射一发子弹传一次，频率不固定，所以只能用状态机控制，不用pid)，内环控摩擦轮3508转速
-										// 0:仅对3508摩擦轮速度闭环，适用没有裁判系统的情况
-#else
-#define USE_REFEREE_BULLET_SPEED_LOOP 0
-#endif
+#endif									// 0:仅对3508摩擦轮速度闭环，适用没有裁判系统的情况
 
-#if USE_REFEREE_BULLET_SPEED_LOOP
+#if USE_REFEREE_BULLET_SPEED_LOOP == 1
 // 弹速控制参数
 #define TARGET_BULLET_SPEED 23.0f // 目标弹速
 #define MIN_ADJUST_STEP 10		  // 弹速很接近目标弹速时每次调整的转速步长
@@ -246,7 +244,7 @@ void Dial_Speed_Set(fp32 *dial_speed)
 
 	bool_t remote_control_shoot = (rc_ctrl.rc.s[0] == RC_SW_UP && rc_ctrl.rc.s[1] == RC_SW_MID);
 
-#if HAVE_REFEREE_SYSTEM
+#if DEBUG_MODE == 0
 	bool_t autoaim_shoot = (rc_ctrl.rc.s[1] == RC_SW_UP && NUC_Data_Receive.fire_or_not == 1 && Game_Status.game_progress == 4);
 #else
 	bool_t autoaim_shoot = (rc_ctrl.rc.s[1] == RC_SW_UP && NUC_Data_Receive.fire_or_not == 1);

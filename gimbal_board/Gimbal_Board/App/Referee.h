@@ -1,14 +1,14 @@
 /**
  ******************************************************************************
  * @file    referee.h
- * @author  Shiki
+ * @author  Shiki,Xujinming
  * @version V1.3.0
- * @date    2025/03/1
+ * @date    2026/2/24
  * @brief   Header file of referee.c
  ******************************************************************************
  * @attention
  *
- *   依据裁判系统 串口协议附录 V1.7
+ *   依据裁判系统 2026串口协议附录 V1.2.0
  *
  ******************************************************************************
  */
@@ -49,9 +49,10 @@ extern "C"
 #define Game_Result_BlueWin 2 // 蓝方胜利
 
 /* 警告信息 */
-#define Warning_Yellow 1  // 黄牌警告
-#define Warning_Red 2	  // 红牌警告
-#define Warning_Failure 3 // 判负
+#define Both_Warning_Yellow 1 //双方黄牌
+#define Warning_Yellow 2  // 黄牌警告
+#define Warning_Red 3	  // 红牌警告
+#define Warning_Failure 4 // 判负
 
 /* 机器人ID */
 #define Robot_ID_Red_Hero 1			// 红方英雄
@@ -81,16 +82,17 @@ extern "C"
 
 /* 扣血类型 */
 #define Hurt_Type_ArmoredPlate 0	 // 装甲板伤害
-#define Hurt_Type_ModuleOffline 1	 // 模块离线
-#define Hurt_Type_OverShootSpeed 2	 // 枪口超射速
-#define Hurt_Type_OverShootHeat 3	 // 枪管超热量
-#define Hurt_Type_OverChassisPower 4 // 底盘超功率
+#define Hurt_Type_ModuleOffline 1	 // 装甲模块或超级电容模块离线
 #define Hurt_Type_Collision 5		 // 装甲撞击
 
 /* 发射机构编号 */
-#define Shooter_ID1_17mm 1 // 1号17mm发射机构
-#define Shooter_ID2_17mm 2 // 2号17mm发射机构
+#define Shooter_ID_17mm 1 // 17mm发射机构
 #define Shooter_ID1_42mm 3 // 1号42mm发射机构
+
+/* 哨兵姿态 */
+#define ATTACK_MODE 1 // 进攻
+#define DEFENSE_MODE 2 // 防御
+#define MOVE_MODE 3  // 移动
 
 /* 飞镖信息 */
 #define Dart_State_Open 0	  // 飞镖闸门开启
@@ -121,7 +123,7 @@ extern "C"
 #define UI_DataID_Draw7 0x104	 // 客户端绘制7个图形
 #define UI_DataID_DrawChar 0x110 // 客户端绘制字符图形
 
-	/* 雷达，哨兵自主决策cmdID */
+	/* 雷达,哨兵自主决策cmdID */
 #define SEND_TO_LIDAR 0x0202
 #define SENTRY_AUTO_SEND 0x0120
 #define LIDAR_AUTO_SEND 0x0121
@@ -174,24 +176,16 @@ extern "C"
 		uint8_t winner;
 	} ext_game_result_t;
 
-	typedef __packed struct // 0x0003 机器人血量数据
+	typedef __packed struct // 0x0003 己方机器人血量数据
 	{
-		uint16_t red_1_robot_HP;
-		uint16_t red_2_robot_HP;
-		uint16_t red_3_robot_HP;
-		uint16_t red_4_robot_HP;
-		uint16_t reserved;
-		uint16_t red_7_robot_HP;
-		uint16_t red_outpost_HP;
-		uint16_t red_base_HP;
-		uint16_t blue_1_robot_HP;
-		uint16_t blue_2_robot_HP;
-		uint16_t blue_3_robot_HP;
-		uint16_t blue_4_robot_HP;
-		uint16_t reserved_1;
-		uint16_t blue_7_robot_HP;
-		uint16_t blue_outpost_HP;
-		uint16_t blue_base_HP;
+		uint16_t ally_1_robot_HP; 
+		uint16_t ally_2_robot_HP; 
+		uint16_t ally_3_robot_HP;  
+		uint16_t ally_4_robot_HP; 
+		uint16_t reserved; 
+		uint16_t ally_7_robot_HP; 
+		uint16_t ally_outpost_HP; 
+		uint16_t ally_base_HP; 
 	} ext_game_robot_HP_t;
 
 	/* 0x010X --------------------------------------------------------------------*/
@@ -234,8 +228,7 @@ extern "C"
 		uint16_t reserved_1;
 		float reserved_2;
 		uint16_t buffer_energy;
-		uint16_t shooter_17mm_1_barrel_heat;
-		uint16_t shooter_17mm_2_barrel_heat;
+		uint16_t shooter_17mm_barrel_heat;
 		uint16_t shooter_42mm_barrel_heat;
 	} ext_power_heat_data_t;
 
@@ -275,14 +268,24 @@ extern "C"
 		uint16_t bullet_remaining_num_17mm;
 		uint16_t bullet_remaining_num_42mm;
 		uint16_t coin_remaining_num;
+		uint16_t projectile_allowance_fortress; 
 	} ext_bullet_remaining_t;
 
 	typedef __packed struct // 0x0209 机器人RFID状态
 	{
 		uint32_t rfid_status;
+		uint8_t rfid_status_2;
 	} ext_rfid_status_t;
 
-	typedef __packed struct // 0x020B 地面机器人位置
+	typedef __packed struct  //0x020A 飞镖站状态 
+	{ 
+		uint8_t dart_launch_opening_status; 
+		uint8_t reserved; 
+		uint16_t target_change_time; 
+		uint16_t latest_launch_cmd_time; 
+	}dart_client_cmd_t; 
+
+	typedef __packed struct // 0x020B 己方地面机器人位置
 	{
 		float hero_x;
 		float hero_y;
@@ -296,11 +299,32 @@ extern "C"
 		float reserved_2;
 	} ext_ground_robot_position_t;
 
+	typedef __packed struct  //0x020C 双方机器人特殊状态 
+	{ 
+		uint16_t mark_progress; 
+	}radar_mark_data_t;
+
 	typedef __packed struct // 0x020D 哨兵相关信息
 	{
-		uint32_t sentry_info;
-		uint16_t sentry_info_2;
+		uint32_t exchanged_bullet_num : 11;		  // bit0-10: 成功兑换的允许发弹量（除远程兑换外）
+		uint32_t remote_bullet_success_count : 4; // bit11-14: 成功远程兑换发弹量的次数
+		uint32_t remote_blood_success_count : 4;  // bit15-18: 成功远程兑换血量的次数
+		uint32_t can_revive_free : 1;			  // bit19: 是否可以确认免费复活
+		uint32_t can_revive_now : 1;			  // bit20: 是否可以兑换立即复活
+		uint32_t revive_cost : 10;				  // bit21-30: 立即复活需要花费的金币数
+		uint32_t reserved_1 : 1;					  // bit31: 保留位
+
+		uint16_t is_out_of_combat : 1;		  // bit0: 是否脱战
+		uint16_t remaining_17mm_bullet : 11;  // bit1-11: 队伍17mm剩余可兑换发弹量
+		uint16_t sentry_mode : 2;			  // bit12-13: 哨兵当前姿态
+		uint16_t can_activate_power_rune : 1; // bit14: 能量机关是否可激活
+		uint16_t reserved_2 : 1;				  // bit15: 保留位
 	} ext_sentry_info_t;
+
+	typedef __packed struct //0x020E 雷达相关信息
+	{ 
+		uint8_t radar_info; 
+	} radar_info_t; 
 
 	/* 0x030X --------------------------------------------------------------------*/
 	typedef __packed struct // 0x0301 机器人间通信结构体，包括数据头和数据,2025赛季数据来源为雷达
@@ -309,7 +333,7 @@ extern "C"
 		uint16_t sender_ID;
 		uint16_t receiver_ID;
 		uint8_t enemy_hero_position_data;
-		uint8_t check_defend_fortress;
+		uint8_t check_defend_fortress; 
 	} ext_student_interactive_data_t;
 
 	typedef __packed struct // 0x0301 机器人间通信 头结构体
@@ -321,7 +345,14 @@ extern "C"
 
 	typedef __packed struct // 0x0301 机器人间通信 哨兵自主决策指令（发送给裁判系统服务器)
 	{
-		uint32_t sentry_cmd_data;
+			uint32_t ensure_revive : 1;		// 是否确认复活
+			uint32_t ensure_revive_now : 1; // 是否确认兑换立即复活
+			uint32_t buy_bullet_num : 11;	// 将要兑换的发弹量值，开局为 0，修改此值后，哨兵在补血点即可兑换允许发弹量,此值的变化需要单调递增
+			uint32_t remote_buy_bullet_request_num : 4; // 哨兵远程兑换发弹量的请求次数,开局为 0，修改此值即可请求远程兑换发弹量
+			uint32_t remote_buy_blood_request_num : 4; // 哨兵远程兑换血量的请求次数,开局为 0，修改此值即可请求远程兑换血量
+			uint32_t change_sentry_mode : 2;		   // 哨兵修改当前姿态指令，1 为进攻姿态，2 为防御姿态，3 为移动姿态，默认为 3；修改此值即可改变 哨兵姿态
+			uint32_t enable_power_rune : 1;			   // 哨兵机器人是否确认使能量机关进入正在激活状态，1 为确认。默认为 0。
+			uint32_t reserved : 8; 
 	} sentry_cmd_t;
 
 	typedef __packed struct // 0x0301 机器人间通信 哨兵与其他机器人通信指令，此为发送结构体（2025赛季为发送给雷达）
@@ -330,13 +361,13 @@ extern "C"
 		uint8_t reach_enemy_hero;	   // 哨兵是否到达抓英雄的目标点位
 	} sentry_interactive_data_t;
 
-	typedef __packed struct // 0x0303 小地图下发信息标识
+	typedef __packed struct // 0x0303 云台手小地图下发信息标识
 	{
 		float target_position_x;
 		float target_position_y;
-		float target_position_z;
 		uint8_t commd_keyboard;
 		uint16_t target_robot_ID;
+		uint16_t cmd_source; 
 	} ext_robot_command_t;
 
 	typedef __packed struct // 0x0305 小地图接收信息标识
@@ -481,8 +512,11 @@ extern "C"
 	extern ext_shoot_data_t Shoot_Data;
 	extern ext_bullet_remaining_t Bullet_Remaining;
 	extern ext_rfid_status_t RFID_Status;
+	extern dart_client_cmd_t Dart_Client_Cmd; 
 	extern ext_ground_robot_position_t Ground_Robot_Position;
+	extern radar_mark_data_t Radar_Mark_Data; 
 	extern ext_sentry_info_t Sentry_Info;
+	extern radar_info_t Radar_Info; 
 
 	/* 0x030X */
 	extern ext_student_interactive_data_t Student_Interactive_Data;
