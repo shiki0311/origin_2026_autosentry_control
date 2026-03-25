@@ -42,7 +42,7 @@ void referee_usart_task(void const *argument)
 		/* 向裁判系统发送哨兵自主决策数据 */
 		Sentry_PushUp_Cmd(&Sentry_Auto_Cmd_Send, Game_Robot_State.robot_id);
 		vTaskDelay(8);
-		Sentry_To_Lidar_Cmd(&Sentry_Interactive_With_Liadr, Game_Robot_State.robot_id);
+//		Sentry_To_Lidar_Cmd(&Sentry_Interactive_With_Liadr, Game_Robot_State.robot_id);
 		vTaskDelay(8);
 	}
 }

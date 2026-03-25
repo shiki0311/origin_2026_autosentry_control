@@ -3,7 +3,8 @@
   * @file       INS_task_ekf.c/h
   * @brief      主要利用陀螺仪bmi088，使用ekf完成姿态解算，得出欧拉角，
   *             提供通过bmi088的data ready 中断完成外部触发，减少数据等待延迟
-  *             通过DMA的SPI传输节约CPU时间.
+  *             通过DMA的SPI传输节约CPU时间.分为两种模式：校准模式（标定零漂）和正常模式（姿态解算）。
+  *             在校准模式下，等待温度稳定后进行IMU零漂标定；在正常模式下，进行姿态解算并输出欧拉角和四元数。
   * @note
   * @history
   *  Version    Date            Author          Modification
@@ -34,10 +35,15 @@
 
 #define IMU_temp_PWM(pwm) imu_pwm_set(pwm) // pwm给定
 
+//#define BMI088_BOARD_INSTALL_SPIN_MATRIX \
+//    {-1.0f, 0.0f, 0.0f},                 \
+//        {0.0f, 0.0f, -1.0f},             \
+//        {0.0f, -1.0f, 0.0f}
+
 #define BMI088_BOARD_INSTALL_SPIN_MATRIX \
-    {-1.0f, 0.0f, 0.0f},                 \
+    {0.0f, 1.0f, 0.0f},                 \
         {0.0f, 0.0f, -1.0f},             \
-        {0.0f, -1.0f, 0.0f}
+        {-1.0f, 0.0f, 0.0f}
 
 /**
  * @description: 初始化ins task
@@ -113,7 +119,7 @@ uint8_t calibration_done = 0;
 
 bmi088_real_data_t bmi088_real_data;
 
-fp32 gyro_offset_data[3] = {0.00039f, 0.00498476837f, 0.0030584302f}; // 陀螺仪零偏补偿
+fp32 gyro_offset_data[3] = {0.00020520f, 0.003640f, 0.002905f}; // 陀螺仪零偏补偿
 static const fp32 gyro_scale_factor[3][3] = {BMI088_BOARD_INSTALL_SPIN_MATRIX};
 static const fp32 accel_scale_factor[3][3] = {BMI088_BOARD_INSTALL_SPIN_MATRIX};
 // 加速度计低通滤波系数
@@ -128,7 +134,7 @@ static void INS_init(void)
     const fp32 imu_temp_PID[3] = {TEMPERATURE_PID_KP, TEMPERATURE_PID_KI, TEMPERATURE_PID_KD};
     PID_init(&INS.imu_temp_pid, PID_POSITION, imu_temp_PID, TEMPERATURE_PID_MAX_OUT, TEMPERATURE_PID_MAX_IOUT);
 
-    IMU_QuaternionEKF_Init(10, 0.001, 6000000, 0.997, 0); // 初始化卡尔曼滤波
+    IMU_QuaternionEKF_Init(10, 0.001, 10000000, 1.0, 0); // 初始化卡尔曼滤波
 
     DWT_Init(CPU_FREQ_MHZ); // 启动DWT，用于高精度计时
 
@@ -238,6 +244,10 @@ void INS_Task(void const *pvParameters)
         INS.Pitch = QEKF_INS.Pitch;
         INS.Roll = QEKF_INS.Roll;
         INS.YawTotalAngle = QEKF_INS.YawTotalAngle;
+        INS.w = QEKF_INS.q[0];
+        INS.x = QEKF_INS.q[1];
+        INS.y = QEKF_INS.q[2];
+        INS.z = QEKF_INS.q[3];
 
         // 让 EKF 运行若干次以收敛（warm-up），然后再通知 Gimbal_Task 启动
         {
@@ -329,11 +339,11 @@ static void imu_temp_control(fp32 temp)
                 // 达到设置温度，将积分项设置为一半最大功率，加速收敛
                 //
                 first_temperate = 1;
-                INS.imu_temp_pid.Iout = MPU6500_TEMP_PWM_MAX / 2.0f;
+                INS.imu_temp_pid.Iout = MPU6500_TEMP_PWM_MAX / 4.0f;
             }
         }
 
-        IMU_temp_PWM(MPU6500_TEMP_PWM_MAX - 1);
+        IMU_temp_PWM(MPU6500_TEMP_PWM_MAX - 3000);
     }
 }
 

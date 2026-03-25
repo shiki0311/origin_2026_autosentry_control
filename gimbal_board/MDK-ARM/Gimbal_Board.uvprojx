@@ -898,6 +898,11 @@
               <FileType>1</FileType>
               <FilePath>..\Gimbal_Board\algorithm\QuaternionEKF.c</FilePath>
             </File>
+            <File>
+              <FileName>user_lib.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Gimbal_Board\algorithm\user_lib.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

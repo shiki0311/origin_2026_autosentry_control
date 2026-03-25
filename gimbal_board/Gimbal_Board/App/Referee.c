@@ -19,7 +19,7 @@
 #include "crcs.h"
 #include "bsp_usart.h"
 #include "Cboard_To_Nuc_usbd_communication.h"
-
+#include "detect_task.h"
 typedef enum
 {
 	GAME_STATE_CMD_ID = 0x0001,			 // 比赛状态数据
@@ -336,7 +336,7 @@ void Sentry_PushUp_Cmd(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID)
 	Sentry_Auto_Cmd->Interactive_Header.receiver_ID = Referee_Server;	// 接收者ID
 
 	/* 填充 sentry_cmd */
-	Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = ATTACK_MODE; // 设置哨兵为进攻模式,测试用
+	Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = toe_is_error(NUC_DATA_TOE)? ATTACK_MODE : NUC_Data_Receive.target_mode; // 设置哨兵为进攻模式,测试用
 	Sentry_Auto_Cmd->sentry_cmd.ensure_revive = 1;  // 请求复活，一直发就行，不会有什么别的影响
 	Sentry_Auto_Cmd->CRC16 = CRC16_Calculate((uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t) - 2); // frame_tail CRC16校验
 

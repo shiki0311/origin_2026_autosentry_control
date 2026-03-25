@@ -86,6 +86,10 @@ typedef struct // 云台小yaw轴，pitch轴的6020结构体
     fp32 INS_angle_set_last;
     fp32 ENC_angle_set;
     fp32 ENC_angle_now;
+    fp32 ENC_angle_set_last;
+
+    fp32 speed_ff; // 速度前馈项
+    fp32 current_ff; // 电流(力矩）前馈项
     int16_t give_current;
 
     pid_type_def speed_pid;
@@ -118,9 +122,14 @@ typedef struct // 大yaw 达妙6006结构体
     fp32 INS_angle_set;
     fp32 INS_angle_set_last;
 
+    fp32 speed_ff;   // 速度前馈项
+    fp32 current_ff; // 电流(力矩）前馈项
+
     pid_type_def speed_pid;
     pid_type_def nav_angle_pid;
     pid_type_def follow_small_yaw_pid;
+    pid_type_def auto_aim_pid;
+    pid_type_def omni_pid; //全向感知pid
 
 } DM_motor_data_t;
 

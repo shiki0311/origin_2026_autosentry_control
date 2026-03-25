@@ -79,6 +79,12 @@ typedef struct
   float Pitch;
   float Yaw;
 
+  //四元数
+  float w;
+  float x;
+  float y;
+  float z;
+
   pid_type_def imu_temp_pid; // bmi088温度控制PID
 } INS_mahony_t;
 extern INS_mahony_t INS;

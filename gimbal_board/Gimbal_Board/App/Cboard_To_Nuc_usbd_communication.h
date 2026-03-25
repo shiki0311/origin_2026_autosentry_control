@@ -39,41 +39,49 @@ typedef struct
 
 typedef struct
 {
-	float Yaw;	 // 当前yaw（°）
 	float Pitch; // 当前pitch（°）
 	float Roll;	 // 当前Roll（°）
+	float Small_Yaw;	 // 当前小yaw（°）
+	float Big_Yaw;    //当前大yaw（°）
+
+	uint8_t mode;//自瞄用不到，发0就行
+
+	// 四元数
+	float w; 
+	float x;
+	float y;
+	float z;
+
+	float small_yaw_speed;
+	float pitch_speed;
+
+	float bullet_speed;
+	uint8_t bullet_shoot_num; //没用，发0就行
 } __attribute__((__packed__)) AutoAim_Data_Tx;
 
 typedef struct
 {
+	//自身信息
 	uint16_t remain_HP;
 	uint16_t max_HP;
-
-	uint8_t game_progress;
-	uint16_t stage_remain_time;
-	uint16_t coin_remaining_num;
 	uint16_t bullet_remaining_num_17mm;
-
-	uint16_t red_1_HP;
-	uint16_t red_2_HP;
-	uint16_t red_3_HP;
-	uint16_t red_4_HP;
-	uint16_t red_7_HP;
-	uint16_t red_outpost_HP;
-	uint16_t red_base_HP;
-
-	uint16_t blue_1_HP;
-	uint16_t blue_2_HP;
-	uint16_t blue_3_HP;
-	uint16_t blue_4_HP;
-	uint16_t blue_7_HP;
-	uint16_t blue_outpost_HP;
-	uint16_t blue_base_HP;
-
+	uint16_t bullet_cooling_speed;  //热量冷却速率
+	uint16_t shooter_heat_limit; //枪口热量上限
+	uint16_t shooter_heat_now; //当前枪口热量
+	uint8_t remain_energy;  //剩余底盘能量
+	uint8_t health_state;		 // 健康状态
+	uint8_t state_now; //当前姿态
+	//全局信息
+	uint16_t stage_remain_time;
+	uint8_t game_progress;
+	uint16_t ally_1_robot_HP;
+	uint16_t ally_2_robot_HP;
+	uint16_t ally_3_robot_HP;
+	uint16_t ally_4_robot_HP;
+	uint16_t ally_outpost_HP;
+	uint16_t ally_base_HP;
 	uint32_t rfid_status;
 	uint32_t event_data;
-	uint8_t hurt_reason;
-	uint8_t enemy_hero_position; // 敌方英雄所在区域的编号
 	bool_t defend_fortress;		 // 是否要回防入侵我方堡垒的敌人
 } __attribute__((__packed__)) Referee_Data_Tx;
 /*******************************************END**********************************************/
@@ -85,11 +93,13 @@ typedef struct
 	uint8_t chassis_mode;  //1跟头2陀螺
 	uint8_t pass_bumpy_mode;
 	uint8_t pitch_mode; 	//打人0打前哨1
+	uint8_t target_mode;  //哨兵目标姿态
+	uint8_t occupy_middle_section; //rmul开局抢中
 	//自瞄数据
-	float yaw_aim;
+	float small_yaw_aim;
+	float big_yaw_aim;
 	float pitch_aim;
 	bool_t fire_or_not;
-	bool_t yaw_rotate_flag;	 // 是否要进行大回环
 	//导航数据
 	float vx;
 	float vy;
@@ -101,7 +111,7 @@ typedef struct
 /*******************************************END**********************************************/
 extern uint8_t NUC_USBD_AutoAim_TxBuf[USBD_TX_BUF_LENGHT],NUC_USBD_RxBuf[USBD_RX_BUF_LENGHT];
 extern NUC_Data_Rx NUC_Data_Receive;
-extern uint8_t yaw_rotate_flag_last; // 记录上一次的yaw_rotate_flag，用于判断当前是不是刚刚退出大回环模式
+extern Referee_Data_Tx Referee_Data_Transmit;
 
 void Send_To_NUC(TIM_HandleTypeDef *htim);
 void USBD_IRQHandler(uint8_t *Buf, uint16_t Len);

@@ -39,9 +39,9 @@
 #define IMU_temp_PWM(pwm)  imu_pwm_set(pwm)                    //pwm给定
 
 #define BMI088_BOARD_INSTALL_SPIN_MATRIX    \
-    {-1.0f, 0.0f, 0.0f},                     \
-    {0.0f, 0.0f, -1.0f},                     \
-    {0.0f, -1.0f, 0.0f}                     \
+    {0.0f, 1.0f, 0.0f},                 \
+        {0.0f, 0.0f, -1.0f},             \
+        {-1.0f, 0.0f, 0.0f}
 
 
 #define IST8310_BOARD_INSTALL_SPIN_MATRIX   \
@@ -166,10 +166,6 @@ static fp32 INS_mag[3] = {0.0f, 0.0f, 0.0f};
 static fp32 INS_quat[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 fp32 INS_angle[3] = {0.0f, 0.0f, 0.0f};      //euler angle, unit rad.欧拉角 单位 rad
 
-
-
-
-
 /**
   * @brief          imu task, init bmi088, ist8310, calculate the euler angle
   * @param[in]      pvParameters: NULL
@@ -221,9 +217,9 @@ void INS_Task(void const *pvParameters)
 
     imu_start_dma_flag = 1;
 
-    bmi088_offset_data.gyro[0] = 0.00039f;
-    bmi088_offset_data.gyro[1] = 0.00498476837;
-    bmi088_offset_data.gyro[2] = 0.0030584302f;
+    bmi088_offset_data.gyro[0] = 0.0001886f;
+    bmi088_offset_data.gyro[1] = 0.003763;
+    bmi088_offset_data.gyro[2] = 0.002905f;
     //    mpu_offset_clc();
 
     // 标记是否是第一次进入while(1)循环
@@ -288,6 +284,10 @@ void INS_Task(void const *pvParameters)
 			INS.Yaw = INS_angle[AXIS_Z] * 180.0f / 3.141592653589f;
 			INS.Pitch = INS_angle[AXIS_Y] * 180.0f / 3.141592653589f;
 			INS.Roll = INS_angle[AXIS_X] * 180.0f / 3.141592653589f;
+            INS.w = INS_quat[0];
+            INS.x = INS_quat[1];
+            INS.y = INS_quat[2];
+            INS.z = INS_quat[3];
 
       // 第一次循环执行完成后，释放信号量通知Gimbal_Task启动
      if (first_loop_done == 0)

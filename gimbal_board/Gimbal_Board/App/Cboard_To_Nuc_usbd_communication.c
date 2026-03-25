@@ -5,36 +5,38 @@
  * @history
  *  Version    Date                 Author          Modification
  *  V1.0usbd   October-28-2024		captainwu		1.transform to usbd
- *  V2.0tim    2025-7               Shiki           2.从在freertos task发送数据改为使用定时器中断发送数据
+ *  V2.0tim    2025-7               Shiki      2.从在freertos task发送数据改为使用定时器中断发送数据
  *****************************************************************************************/
 #include "Cboard_To_Nuc_usbd_communication.h"
 #include "referee.h"
 #include "tim.h"
 #include "usb_device.h"
-
+#include "Shoot_Task.h"
+#include "Gimbal_Task.h"
+#include "detect_task.h"
+#include "motor.h"
 /****************************************通讯协议相关定义********************************************/
 // 帧头id
 #define PROTOCOL_HEAD_ID 0xAA
 
 // 命令字ID
-#define CMD_ID_NUC_DATA_RX 0x81 // 接收自瞄数据（上>下）
+#define CMD_ID_NUC_DATA_RX 0x81		// 接收自瞄数据（上>下）
 #define CMD_ID_AUTOAIM_DATA_TX 0x14 // 发送自瞄数据（下>上）
 #define CMD_ID_REFEREE_DATA_TX 0x18 // 发送裁判系统（下>上）
 
 // 数据段长度，以字节为单位
-#define LENGTH_AUTOAIM_DATA_TX 12 // 自瞄所需的陀螺仪的数据长度（3个float)
-#define LENGTH_REFEREE_DATA_TX 50 // 决策所需的裁判系统数据长度
-#define PROTOCAL_HEAD_LENGTH 3	  // 协议头长度
-#define CRC_TAIL_LENGTH 1		  // 一帧数据末尾的CRC校验码长度
+#define LENGTH_AUTOAIM_DATA_TX (sizeof(AutoAim_Data_Tx)) // 自瞄所需的陀螺仪的数据长度（3个float)
+#define LENGTH_REFEREE_DATA_TX (sizeof(Referee_Data_Tx)) // 决策所需的裁判系统数据长度
+#define PROTOCAL_HEAD_LENGTH 3							 // 协议头长度
+#define CRC_TAIL_LENGTH 1								 // 一帧数据末尾的CRC校验码长度
 
 /*******************************************END**********************************************/
 
 uint8_t NUC_USBD_RxBuf[USBD_RX_BUF_LENGHT], NUC_USBD_AutoAim_TxBuf[USBD_TX_BUF_LENGHT], NUC_USBD_Referee_TxBuf[USBD_TX_BUF_LENGHT];
-uint8_t yaw_rotate_flag_last = 0;
 
 AutoAim_Data_Tx AutoAim_Data_Transmit;
 NUC_Data_Rx NUC_Data_Receive;
-Referee_Data_Tx Referee_Data_Tramsit;
+Referee_Data_Tx Referee_Data_Transmit;
 // 发送数据状态跟踪
 bool_t is_sending_referee = FALSE; // 标记是否正在发送referee数据
 bool_t autoaim_pending = FALSE;	   // 标记是否有等待发送的autoaim数据
@@ -66,11 +68,8 @@ void NUC_Data_Unpack(void)
 	{
 	case CMD_ID_NUC_DATA_RX:
 	{
-		static fp32 auto_aim_yaw_last;
-
-		yaw_rotate_flag_last = NUC_Data_Receive.yaw_rotate_flag;
 		memcpy(&NUC_Data_Receive, NUC_USBD_RxBuf + 3, sizeof(NUC_Data_Rx));
-			break;
+		break;
 	}
 
 	default:
@@ -85,7 +84,10 @@ void USBD_IRQHandler(uint8_t *Buf, uint16_t Len)
 		return;
 
 	if (NUC_USBD_RxBuf[1] == Len) // 校验数据包长度
+	{
 		NUC_Data_Unpack();		  // 解包NUC数据
+		detect_hook(NUC_DATA_TOE);
+	}
 }
 
 /**************************打包数据并向nuc发送******************************* */
@@ -100,9 +102,24 @@ void NUC_USBD_Tx(uint8_t cmdid)
 	case CMD_ID_AUTOAIM_DATA_TX:
 		Protocol_Head.Length = LENGTH_AUTOAIM_DATA_TX + PROTOCAL_HEAD_LENGTH + CRC_TAIL_LENGTH;
 		memcpy(NUC_USBD_AutoAim_TxBuf, (uint8_t *)(&Protocol_Head), PROTOCAL_HEAD_LENGTH);
-		AutoAim_Data_Transmit.Pitch = INS.Pitch;
-		AutoAim_Data_Transmit.Roll = INS.Roll;
-		AutoAim_Data_Transmit.Yaw = INS.Yaw;
+		AutoAim_Data_Transmit.Pitch = -INS.Pitch;
+		AutoAim_Data_Transmit.Roll = -INS.Roll;
+		AutoAim_Data_Transmit.Small_Yaw = INS.Yaw > 0.0f ? (INS.Yaw - 180.0f) : (INS.Yaw + 180.0f);
+		AutoAim_Data_Transmit.Big_Yaw = AutoAim_Data_Transmit.Small_Yaw +  (SMALL_YAW_MIDDLE_ENC_ZERO * GM6020_ENC_TO_DEGREE - gimbal_small_yaw_motor.ENC_angle_now);
+		AutoAim_Data_Transmit.mode = 0; // 随便发一个值
+		AutoAim_Data_Transmit.w = INS.z;
+		AutoAim_Data_Transmit.x = INS.y;
+		AutoAim_Data_Transmit.y = -INS.x;
+		AutoAim_Data_Transmit.z = -INS.w;
+		AutoAim_Data_Transmit.small_yaw_speed = gimbal_small_yaw_motor.INS_speed_now;
+		AutoAim_Data_Transmit.pitch_speed = gimbal_pitch_motor.INS_speed_now;
+		AutoAim_Data_Transmit.bullet_shoot_num = 0; // 随便发一个值
+
+#if HAVE_REFEREE_SYSTEM
+		AutoAim_Data_Transmit.bullet_speed = Shoot_Data.bullet_speed;
+#else
+		AutoAim_Data_Transmit.bullet_speed = 0;
+#endif
 
 		memcpy(NUC_USBD_AutoAim_TxBuf + PROTOCAL_HEAD_LENGTH, (uint8_t *)(&AutoAim_Data_Transmit), LENGTH_AUTOAIM_DATA_TX);
 
@@ -122,35 +139,30 @@ void NUC_USBD_Tx(uint8_t cmdid)
 		Protocol_Head.Length = LENGTH_REFEREE_DATA_TX + PROTOCAL_HEAD_LENGTH + CRC_TAIL_LENGTH;
 		memcpy(NUC_USBD_Referee_TxBuf, (uint8_t *)(&Protocol_Head), PROTOCAL_HEAD_LENGTH);
 
-		Referee_Data_Tramsit.remain_HP = Game_Robot_State.current_HP;
-		Referee_Data_Tramsit.max_HP = Game_Robot_State.maximum_HP;
-		Referee_Data_Tramsit.game_progress = Game_Status.game_progress;
-		Referee_Data_Tramsit.stage_remain_time = Game_Status.stage_remain_time;
-		Referee_Data_Tramsit.coin_remaining_num = Bullet_Remaining.coin_remaining_num;
-		Referee_Data_Tramsit.bullet_remaining_num_17mm = Bullet_Remaining.bullet_remaining_num_17mm;
+		// 自身信息
+		Referee_Data_Transmit.remain_HP = Game_Robot_State.current_HP;
+		Referee_Data_Transmit.max_HP = Game_Robot_State.maximum_HP;
+		Referee_Data_Transmit.bullet_remaining_num_17mm = Bullet_Remaining.bullet_remaining_num_17mm;
+		Referee_Data_Transmit.bullet_cooling_speed = Game_Robot_State.shooter_barrel_cooling_value;
+		Referee_Data_Transmit.shooter_heat_limit = Game_Robot_State.shooter_barrel_heat_limit;
+		Referee_Data_Transmit.shooter_heat_now = Power_Heat_Data.shooter_17mm_barrel_heat;
+		Referee_Data_Transmit.remain_energy = Buff_Musk.remaining_energy;
+		Referee_Data_Transmit.state_now = Sentry_Info.sentry_mode;
+		// Referee_Data_Transmit.state_now = NUC_Data_Receive.target_mode;
 
-//		Referee_Data_Tramsit.red_1_HP = Game_Robot_HP.red_1_robot_HP;
-//		Referee_Data_Tramsit.red_2_HP = Game_Robot_HP.red_2_robot_HP;
-//		Referee_Data_Tramsit.red_3_HP = Game_Robot_HP.red_3_robot_HP;
-//		Referee_Data_Tramsit.red_4_HP = Game_Robot_HP.red_4_robot_HP;
-//		Referee_Data_Tramsit.red_7_HP = Game_Robot_HP.red_7_robot_HP;
-//		Referee_Data_Tramsit.red_outpost_HP = Game_Robot_HP.red_outpost_HP;
-//		Referee_Data_Tramsit.red_base_HP = Game_Robot_HP.red_base_HP;
-
-//		Referee_Data_Tramsit.blue_1_HP = Game_Robot_HP.blue_1_robot_HP;
-//		Referee_Data_Tramsit.blue_2_HP = Game_Robot_HP.blue_2_robot_HP;
-//		Referee_Data_Tramsit.blue_3_HP = Game_Robot_HP.blue_3_robot_HP;
-//		Referee_Data_Tramsit.blue_4_HP = Game_Robot_HP.blue_4_robot_HP;
-//		Referee_Data_Tramsit.blue_7_HP = Game_Robot_HP.blue_7_robot_HP;
-//		Referee_Data_Tramsit.blue_outpost_HP = Game_Robot_HP.blue_outpost_HP;
-//		Referee_Data_Tramsit.blue_base_HP = Game_Robot_HP.blue_base_HP;
-
-		Referee_Data_Tramsit.rfid_status = RFID_Status.rfid_status;
-		Referee_Data_Tramsit.event_data = Event_Data.event_type;
-		Referee_Data_Tramsit.hurt_reason = Robot_Hurt.hurt_type;
-		Referee_Data_Tramsit.enemy_hero_position = Student_Interactive_Data.enemy_hero_position_data;
-		Referee_Data_Tramsit.defend_fortress = Student_Interactive_Data.check_defend_fortress;
-		memcpy(NUC_USBD_Referee_TxBuf + PROTOCAL_HEAD_LENGTH, (uint8_t *)(&Referee_Data_Tramsit), LENGTH_REFEREE_DATA_TX);
+		//全局信息
+		Referee_Data_Transmit.stage_remain_time = Game_Status.stage_remain_time;
+		Referee_Data_Transmit.game_progress = Game_Status.game_progress;
+		Referee_Data_Transmit.ally_1_robot_HP = Game_Robot_HP.ally_1_robot_HP;
+		Referee_Data_Transmit.ally_2_robot_HP = Game_Robot_HP.ally_2_robot_HP;
+		Referee_Data_Transmit.ally_3_robot_HP = Game_Robot_HP.ally_3_robot_HP;
+		Referee_Data_Transmit.ally_4_robot_HP = Game_Robot_HP.ally_4_robot_HP;
+		Referee_Data_Transmit.ally_outpost_HP = Game_Robot_HP.ally_outpost_HP;
+		Referee_Data_Transmit.ally_base_HP = Game_Robot_HP.ally_base_HP;
+		Referee_Data_Transmit.rfid_status = RFID_Status.rfid_status;
+		Referee_Data_Transmit.event_data = Event_Data.event_type;
+		Referee_Data_Transmit.defend_fortress = Student_Interactive_Data.check_defend_fortress;
+		memcpy(NUC_USBD_Referee_TxBuf + PROTOCAL_HEAD_LENGTH, (uint8_t *)(&Referee_Data_Transmit), LENGTH_REFEREE_DATA_TX);
 
 		NUC_USBD_Referee_TxBuf[LENGTH_REFEREE_DATA_TX + PROTOCAL_HEAD_LENGTH] = CRC_Calculation(NUC_USBD_Referee_TxBuf, LENGTH_REFEREE_DATA_TX + PROTOCAL_HEAD_LENGTH);
 

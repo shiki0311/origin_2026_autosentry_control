@@ -250,7 +250,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         {
         case BIG_YAW_DM6006_RecID: // 下板只需要DM6006的位置数据完成底盘跟随云台
         {
-            //			i1++;
             DM_big_yaw_motor.id = (rx_data[0]) & 0x0F;
             DM_big_yaw_motor.state = (rx_data[0]) >> 4;
             DM_big_yaw_motor.p_int = (rx_data[1] << 8) | rx_data[2];
@@ -259,7 +258,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         case GIMBAL_TO_CHASSIS_FIRST_RecID:
         {
             uint8_t rc_connected;
-            //			i2++;
             chassis_rc_ctrl.s[1] = rx_data[0];
             rc_connected = rx_data[1];
             chassis_rc_ctrl.ch[2] = (rx_data[2] << 8) | rx_data[3];
@@ -273,7 +271,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         }
         case GIMBAL_TO_CHASSIS_SECOND_RecID:
         {
-            //			i3++;
             int nav_vx_int = (rx_data[1] << 8) | rx_data[0];
             int nav_vy_int = (rx_data[3] << 8) | rx_data[2];
             
@@ -284,6 +281,9 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
             nav_ctrl.health_state = (rx_data[4] >> 4) & 0x01;
             nav_ctrl.buffer_energy_remain = ((rx_data[5] & 0x07) << 3) | (rx_data[4] >> 5);
             nav_ctrl.referee_power_limit = ((rx_data[6] & 0x07) << 5) | (rx_data[5] >> 3);
+            nav_ctrl.at_middle_section = (rx_data[6] >> 3) & 0x01;
+            nav_ctrl.rmul_first_go_to_middle = (rx_data[6] >> 4) & 0x01;
+            nav_ctrl.game_start = (rx_data[6] >> 5) & 0x01;
 
             detect_hook(NAV_TOE);
             break;

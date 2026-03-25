@@ -218,7 +218,7 @@
         <Ww>
           <count>12</count>
           <WinNumber>1</WinNumber>
-          <ItemText>chassis_steer_motor</ItemText>
+          <ItemText>chassis_steer_motor,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>13</count>
@@ -248,7 +248,7 @@
         <Ww>
           <count>18</count>
           <WinNumber>1</WinNumber>
-          <ItemText>DM_big_yaw_motor</ItemText>
+          <ItemText>DM_big_yaw_motor,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>19</count>

@@ -33,11 +33,10 @@ shoot_control_t shoot_control = {
 	.fric_ready = FALSE,
 	.fric_start = FALSE,
 	.dial_over_temperatue = FALSE,
-	.fric_target_rpm = 6100,
+	.fric_target_rpm = 6050,
 	.cooling_limit_cnt = 0};
 /*****************************************************************根据裁判系统发射数据进行弹速闭环********************************************************************************/
-#define HAVE_REFEREE_SYSTEM 0 // 哨兵当前是否安装裁判系统
-#define DEBUG_MODE 1 //日常调试1，比赛前改0
+#define DEBUG_MODE 0 //日常调试1，比赛前改0
 
 #if HAVE_REFEREE_SYSTEM
 #define USE_REFEREE_BULLET_SPEED_LOOP 1 // 1:对裁判系统传回的弹速闭环，外环控弹速（因为裁判系统传回的弹速数据是发射一发子弹传一次，频率不固定，所以只能用状态机控制，不用pid)，内环控摩擦轮3508转速
@@ -221,9 +220,9 @@ void Fric_Motor_Current_Control(void)
 void Dial_Speed_Set(fp32 *dial_speed)
 {
 #if HAVE_REFEREE_SYSTEM
-	if ((rc_ctrl.rc.s[1] == RC_SW_UP || (NUC_Data_Receive.yaw_aim != 0) || (rc_ctrl.rc.s[1] == RC_SW_MID && rc_ctrl.rc.s[0] == RC_SW_UP)) && Game_Robot_State.power_management_shooter_output == 0x01) // 判断是否要进行热量保护,快超热量了就把拨弹盘目标速度定为0一段时间
+	if ((rc_ctrl.rc.s[1] == RC_SW_UP || (NUC_Data_Receive.small_yaw_aim != 0) || (rc_ctrl.rc.s[1] == RC_SW_MID && rc_ctrl.rc.s[0] == RC_SW_UP)) && Game_Robot_State.power_management_shooter_output == 0x01) // 判断是否要进行热量保护,快超热量了就把拨弹盘目标速度定为0一段时间
 	{
-		if ((Power_Heat_Data.shooter_17mm_1_barrel_heat >= (Game_Robot_State.shooter_barrel_heat_limit - 60)))
+		if ((Power_Heat_Data.shooter_17mm_barrel_heat >= (Game_Robot_State.shooter_barrel_heat_limit - 50)))
 		{
 			shoot_control.need_limit_heat = 1;
 		}
@@ -263,11 +262,11 @@ void Dial_Motor_Control(void)
 	if (LK_dial_motor.temperature > 80)
 		shoot_control.dial_over_temperatue = TRUE;
 
-	if (shoot_control.dial_over_temperatue = TRUE && LK_dial_motor.temperature < 60)
+	if (shoot_control.dial_over_temperatue && LK_dial_motor.temperature < 60)
 		shoot_control.dial_over_temperatue = FALSE;
 
 #if HAVE_REFEREE_SYSTEM
-	bool_t disable_dial_motor = (rc_ctrl.rc.s[1] == RC_SW_DOWN || toe_is_error(DBUS_TOE) || shoot_control.dial_over_temperatue || power_management_shooter_output == 0x00);
+	bool_t disable_dial_motor = (rc_ctrl.rc.s[1] == RC_SW_DOWN || toe_is_error(DBUS_TOE) || shoot_control.dial_over_temperatue || Game_Robot_State.power_management_shooter_output == 0x00);
 #else
 	bool_t disable_dial_motor = (rc_ctrl.rc.s[1] == RC_SW_DOWN || toe_is_error(DBUS_TOE) || shoot_control.dial_over_temperatue);
 #endif
@@ -286,7 +285,7 @@ void Dial_Motor_Control(void)
 
 	if (dial_back_flag) // 如果需要退弹保护，波蛋盘反转一段时间
 	{
-		if (xTaskGetTickCount() - back_start_time > 250) // 如果超出时间阈值，就退出退弹保护
+		if (xTaskGetTickCount() - back_start_time > 300) // 如果超出时间阈值，就退出退弹保护
 		{
 			dial_back_flag = 0;
 			dial_stop_cnt = 0;
@@ -296,10 +295,10 @@ void Dial_Motor_Control(void)
 		else
 			return; // 时间阈值没到，target_current继续保持5000或-5000
 	}
-	if (abs(LK_dial_motor.give_current) > 1200 && fabs(LK_dial_motor.speed_now) < 10 && !toe_is_error(DIAL_MOTOR_TOE) && shoot_control.fric_ready) // 波蛋盘电机给定电流较大但是转速很小，说明拨弹盘卡住了
+	if (abs(LK_dial_motor.give_current) > (0.85 * LK_dial_motor.speed_pid.Kp * DIAL_SPEED_HIGH) && fabs(LK_dial_motor.speed_now) < 20 && !toe_is_error(DIAL_MOTOR_TOE) && shoot_control.fric_ready) // 波蛋盘电机给定电流较大但是转速很小，说明拨弹盘卡住了
 	{
 		dial_stop_cnt++;
-		if (dial_stop_cnt > 200)
+		if (dial_stop_cnt > 300)
 		{
 			dial_back_flag = 1;
 			back_start_time = xTaskGetTickCount();
@@ -340,8 +339,8 @@ void Shoot_Task(void const *argument)
 
 		Allocate_Can_Msg(fric_motor[0].give_current, fric_motor[1].give_current, 0, 0, CAN_FRIC_CMD);
 
-		// if(cnt % 2 == 0)
 		Allocate_Can_Msg(LK_MOTOR_TORQUE_CONTROL_CMD_ID, 0, LK_dial_motor.give_current, 0, CAN_DIAL_CMD);
+		Vofa_Send_Data4(LK_dial_motor.speed_now, LK_dial_motor.speed_set,0,0);
 
 		cnt == 120 ? cnt = 1 : cnt++; // div等于2,3,4,5的最小公倍数时重置
 

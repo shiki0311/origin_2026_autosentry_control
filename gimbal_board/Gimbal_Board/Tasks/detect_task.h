@@ -66,6 +66,7 @@ enum errorList
     DIAL_MOTOR_TOE,
     BOARD_GYRO_TOE,
     BOARD_ACCEL_TOE,
+    NUC_DATA_TOE,
     ERROR_LIST_LENGHT,
 };
 

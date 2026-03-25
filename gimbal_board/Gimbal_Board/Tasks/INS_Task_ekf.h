@@ -3,7 +3,8 @@
   * @file       INS_task_ekf.c/h
   * @brief      主要利用陀螺仪bmi088，使用ekf完成姿态解算，得出欧拉角，
   *             提供通过bmi088的data ready 中断完成外部触发，减少数据等待延迟
-  *             通过DMA的SPI传输节约CPU时间.
+  *             通过DMA的SPI传输节约CPU时间.分为两种模式：校准模式（标定零漂），正常模式（姿态解算）。
+  *             在校准模式下，等待温度稳定后进行IMU零漂标定；在正常模式下，进行姿态解算并输出欧拉角和四元数。
   * @note
   * @history
   *  Version    Date            Author          Modification
@@ -35,7 +36,7 @@
 #define TEMP_STABLE_THRESHOLD    0.5f    /* 温度稳定判断阈值（度） */
 #define TEMP_STABLE_TIME_COUNT   3000     /* 温度需要稳定的次数 */
 
-#define IMU_Temp_Set 25
+#define IMU_Temp_Set 35
 
 #ifndef AXIS_X
 #define AXIS_X 0
@@ -79,6 +80,11 @@ typedef struct
   float Pitch;
   float Yaw;
   float YawTotalAngle;
+  //位姿对应的四元数
+  float w;
+  float x;
+  float y;
+  float z;
 
   uint32_t INS_DWT_Count;
 

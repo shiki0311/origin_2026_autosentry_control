@@ -14,8 +14,6 @@
 /*********************************导航数据解析参数*******************************************/
 #define NAV_MAX_SPEED 10.0f  // 导航最大速度
 #define NAV_MIN_SPEED -10.0f // 导航最小速度
-
-#define COMPETE_MODE 0//是否为比赛模式，0为调试模式，1为比赛模式
 /**************************哨兵健康状态枚举体***************************/
 typedef enum
 {
@@ -35,8 +33,11 @@ union
         uint64_t updownhill_state : 2;
         uint64_t health_state : 1;
         uint64_t energy_buffer : 6; //当前底盘剩余缓冲能量
-        uint64_t chassis_max_power : 8; //裁判系统传过来的底盘功率上限      
-        uint64_t reserved : 13;         // 保留位
+        uint64_t chassis_max_power : 8; //裁判系统传过来的底盘功率上限
+        uint64_t at_middle_section : 1;     // 是否处于RMUL中央增益区
+        uint64_t rmul_first_go_to_middle : 1; // 是否是RMUL开局抢中
+        uint64_t game_start : 1; // 比赛是否开始
+        uint64_t reserved : 10;         // 保留位
     }single_data;
 } __attribute__((packed)) nav_data_u;
 
@@ -46,13 +47,10 @@ union
  */
 static health_state_t Health_State_Update(void)
 {
-    if (rc_ctrl.rc.s[1] != RC_SW_UP) // 只有导航模式使用，不是导航模式直接返回
-        return HEALTH_NORMAL;
-
     static uint32_t hurt_start_time;
     static uint16_t last_robot_hp;
     static health_state_t health_state = HEALTH_NORMAL;         // 在上板判断哨兵健康状态后传到下板，用于设置小陀螺转速
-    bool_t hit_by_bullet = (Game_Robot_State.current_HP < last_robot_hp && Robot_Hurt.hurt_type == Hurt_Type_ArmoredPlate && Robot_Hurt.armor_type != 0); // 判断是否被弹丸击打
+    bool_t hit_by_bullet = (Game_Robot_State.current_HP < last_robot_hp && Robot_Hurt.hurt_type == Hurt_Type_ArmoredPlate); // 判断是否被弹丸击打
 
     switch (health_state)
     {
@@ -84,31 +82,21 @@ void Send_Chassis_Task()
 {
     while (1)
     {
-
+        
         Allocate_Can_Msg(rc_ctrl.rc.s[1] << 8 | (!toe_is_error(DBUS_TOE)), rc_ctrl.rc.ch[2], rc_ctrl.rc.ch[3], rc_ctrl.rc.ch[4], CAN_GIMBAL_TO_CHASSIS_FIRST_CMD);
         vTaskDelay(10);
 
-        #if COMPETE_MODE == 1
-        if(Game_Robot_State.game_progress != 4) // 非比赛时速度置零
-        {
-            nav_data_u.single_data.nav_vx_uint = float_to_uint(0, NAV_MIN_SPEED, NAV_MAX_SPEED, 12);
-            nav_data_u.single_data.nav_vy_uint = float_to_uint(0, NAV_MIN_SPEED, NAV_MAX_SPEED, 12); 
-        }
-        else
-        {
-            nav_data_u.single_data.nav_vx_uint = float_to_uint(NUC_Data_Receive.vx, NAV_MIN_SPEED, NAV_MAX_SPEED, 12);
-            nav_data_u.single_data.nav_vy_uint = float_to_uint(NUC_Data_Receive.vy, NAV_MIN_SPEED, NAV_MAX_SPEED, 12); // 把float转换成uint16节省字节，下板收到数据后再用uint_to_float还原数据
-        }
-        #else
         nav_data_u.single_data.nav_vx_uint = float_to_uint(NUC_Data_Receive.vx, NAV_MIN_SPEED, NAV_MAX_SPEED, 12);
         nav_data_u.single_data.nav_vy_uint = float_to_uint(NUC_Data_Receive.vy, NAV_MIN_SPEED, NAV_MAX_SPEED, 12); // 把float转换成uint16节省字节，下板收到数据后再用uint_to_float还原数据
-        #endif
                 
         nav_data_u.single_data.nav_chassis_mode = NUC_Data_Receive.chassis_mode;
         nav_data_u.single_data.updownhill_state = NUC_Data_Receive.updownhill_state;
-        nav_data_u.single_data.health_state = Health_State_Update();
+        nav_data_u.single_data.health_state = Referee_Data_Transmit.health_state = Health_State_Update();
         nav_data_u.single_data.energy_buffer = (Power_Heat_Data.buffer_energy > 63) ? 63 : Power_Heat_Data.buffer_energy; // 限制在0~(2^6-1)，一般不会超限
         nav_data_u.single_data.chassis_max_power = (Game_Robot_State.chassis_power_limit > 255) ? 255 : Game_Robot_State.chassis_power_limit;  //限制在0~(2^8-1)，一般不会超限
+        nav_data_u.single_data.at_middle_section = (Game_Status.game_progress == 4 && ((RFID_Status.rfid_status >> 23) & 0x01)) ? 1 : 0;
+				nav_data_u.single_data.rmul_first_go_to_middle = NUC_Data_Receive.occupy_middle_section;
+        nav_data_u.single_data.game_start = (Game_Status.game_progress == 4) ? 1 : 0;
 
         Allocate_Can_Msg(nav_data_u.packed_data[0], nav_data_u.packed_data[1], nav_data_u.packed_data[2], nav_data_u.packed_data[3], CAN_GIMBAL_TO_CHASSIS_SECOND_CMD);
         vTaskDelay(10);
