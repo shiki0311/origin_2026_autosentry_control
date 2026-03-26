@@ -25,19 +25,19 @@
 #define MOTOR_DISTANCE_LENGTH 0.41f // 底盘较长的轮距
 #define WHEEL_RADIUS 0.06f  //舵轮半径
 #define MOTOR_REDUCTION_RATIO 13.72f  // 轮电机减速比
-#define CHASSIS_FOLLOW_GIMBAL_BACK_ZERO 161.63f  //底盘跟随云台时的后零点，单位：度
-#define CHASSIS_FOLLOW_GIMBAL_RIGHT_ZERO 251.63f // 底盘跟随云台时的右零点
-#define CHASSIS_FOLLOW_GIMBAL_LEFT_ZERO 71.63f  // 底盘跟随云台时的左零点
-#define CHASSIS_FOLLOW_GIMBAL_ZERO 341.63f       // 底盘跟随云台时的零点，同时也是小陀螺模式下底盘vx(前进)正方向
+#define CHASSIS_FOLLOW_GIMBAL_BACK_ZERO 164.13f  //底盘跟随云台时的后零点，单位：度
+#define CHASSIS_FOLLOW_GIMBAL_RIGHT_ZERO 254.13f // 底盘跟随云台时的右零点
+#define CHASSIS_FOLLOW_GIMBAL_LEFT_ZERO 74.13f  // 底盘跟随云台时的左零点
+#define CHASSIS_FOLLOW_GIMBAL_ZERO 344.13f       // 底盘跟随云台时的零点，同时也是小陀螺模式下底盘vx(前进)正方向
 
-#define STEER_MOROR1_ENC_OFFSET 4705 //1号舵电机的编码器偏置（范围0-8191）
-#define STEER_MOROR2_ENC_OFFSET 7706 //2号舵电机的编码器偏置（范围0-8191）
-#define STEER_MOROR3_ENC_OFFSET 807 //3号舵电机的编码器偏置（范围0-8191）
+#define STEER_MOROR1_ENC_OFFSET 4782 //1号舵电机的编码器偏置（范围0-8191）
+#define STEER_MOROR2_ENC_OFFSET 7673 //2号舵电机的编码器偏置（范围0-8191）
+#define STEER_MOROR3_ENC_OFFSET 764 //3号舵电机的编码器偏置（范围0-8191）
 #define STEER_MOROR4_ENC_OFFSET 6112 //4号舵电机的编码器偏置（范围0-8191）
 
 //小陀螺相关参数
 #define ROTATE_WZ_MAX 12.0  // 小陀螺正向速度,高速，单位：rad/s
-#define ROTATE_WZ_HIGH 7.0f // 小陀螺正向速度,中高速，单位：rad/s
+#define ROTATE_WZ_HIGH 8.0f // 小陀螺正向速度,中高速，单位：rad/s
 #define ROTATE_WZ_MEDIUM -5.0 // 小陀螺反向速度，中速
 #define ROTATE_WZ_LOW 3.0f  // 小陀螺正向速度,低速，单位：rad/s
 #define ROTATE_WZ_MIN 0.0 // 小陀螺模式，但不转，在导航模式下省功率
@@ -59,7 +59,7 @@
 #define STEER_MOTOR_SPEED_PID_MAX_OUT 16000.0f
 #define STEER_MOTOR_SPEED_PID_MAX_IOUT 1000.0f
 #define STEER_MOTOR_SPEED_FF 3.4f // 舵轮电机速度前馈系数
-#define STEER_MOTOR_CURRENT_FF 20.0f
+#define STEER_MOTOR_CURRENT_FF 10.0f
 
 #define STEER_MOTOR_ANGLE_PID_KP 3.0f
 #define STEER_MOTOR_ANGLE_PID_KI 0.0002f

@@ -108,6 +108,8 @@ typedef struct // 大yaw 达妙6006结构体
     int kd_int;
     float pos;
     float vel;
+    float vel_filtered;
+    float vel_last;
     float toq;
     float Kp;
     float Kd;

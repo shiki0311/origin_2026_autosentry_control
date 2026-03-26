@@ -174,11 +174,14 @@ static void Gimbal_Data_Update(void)
     else
         gimbal_small_yaw_motor.ENC_angle_now = motor_measure_small_yaw.ecd * GM6020_ENC_TO_DEGREE;
 
+    const float lpf_coeff = 0.5f; // 低通滤波系数
     DM_big_yaw_motor.INS_angle_set_last = DM_big_yaw_motor.INS_angle_set;
     DM_big_yaw_motor.INS_speed_set_last = DM_big_yaw_motor.INS_speed_set;
     DM_big_yaw_motor.INS_speed_now = imu.gyro[2] * RAD_TO_DEGREE;
     DM_big_yaw_motor.INS_angle_now = gimbal_small_yaw_motor.INS_angle_now + (SMALL_YAW_MIDDLE_ENC_ZERO * GM6020_ENC_TO_DEGREE - gimbal_small_yaw_motor.ENC_angle_now);
-
+    DM_big_yaw_motor.vel_filtered = lpf_coeff * DM_big_yaw_motor.vel + (1.0f - lpf_coeff) * DM_big_yaw_motor.vel_last;
+    DM_big_yaw_motor.vel_last = DM_big_yaw_motor.vel;
+    
     gimbal_pitch_motor.INS_angle_set_last = gimbal_pitch_motor.INS_angle_set;
     gimbal_pitch_motor.ENC_angle_set_last = gimbal_pitch_motor.ENC_angle_set;
     gimbal_pitch_motor.INS_speed_set_last = gimbal_pitch_motor.INS_speed_set;
@@ -470,6 +473,8 @@ static void Calculate_Gimbal_Motor_Target_Current(pid_type_def *gimbal_motor_pid
         }    
         // 应用电流前馈
         DM_big_yaw_motor.target_current += DM_big_yaw_motor.current_ff * (DM_big_yaw_motor.INS_speed_set - DM_big_yaw_motor.INS_speed_set_last);
+        // 应用底盘摩擦补偿
+        DM_big_yaw_motor.target_current += CHASSIS_FRICTION_COMPENSATE_COEFF * DM_big_yaw_motor.vel_filtered;
         break;
     }
     default:
@@ -725,7 +730,7 @@ void Gimbal_Task(void const *argument)
 //	    Allocate_Can_Msg(500, gimbal_pitch_motor.give_current, 0, 0, CAN_SMALL_YAW_AND_PITCH_CMD);
         //		Allocate_Can_Msg(0, 0, 0, 0, CAN_SMALL_YAW_AND_PITCH_CMD);
 
-        // Vofa_Send_Data4(arm_cos_f32((gimbal_pitch_motor.INS_angle_now - PITCH_CENTROID_OFFSET_ANGLE) * DEGREE_TO_RAD), gimbal_pitch_motor.give_current, motor_measure_pitch.given_current, 0);
+         Vofa_Send_Data4(DM_big_yaw_motor.vel,DM_big_yaw_motor.toq,DM_big_yaw_motor.vel_filtered,DM_big_yaw_motor.INS_angle_now );
 
         cnt == 120 ? cnt = 1 : cnt++; // div等于2,3,4,5的最小公倍数时重置
         vTaskDelay(2);

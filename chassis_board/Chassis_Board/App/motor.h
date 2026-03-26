@@ -67,6 +67,7 @@ typedef struct // 底盘舵电机结构体 6020
 {
     int16_t speed_now; // rpm
     fp32 speed_set;
+	  fp32 speed_set_last;
     fp32 angle_now; // 经过归一化后的舵电机当前位置。单位：度，范围0~180
     fp32 angle_set;
     fp32 angle_set_last;

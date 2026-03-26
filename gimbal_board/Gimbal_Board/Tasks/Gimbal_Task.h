@@ -15,13 +15,14 @@
 #define PITCH_MOTOR_GRAVITY_STATIC_COMPENSATE (5100) // 用于补偿重力，pitch轴质心与转轴的连线与地面平行时抵消重力所需的力矩，单位是发给6020电机的目标电流
 #define PITCH_CENTROID_OFFSET_ANGLE -55.28313f // 补偿pitch的INS_angle
 /**************************************************PID,前馈系数************************************************************************/
-#define BIG_YAW_MOTOR_SPEED_PID_KP 0.1f
+#define BIG_YAW_MOTOR_SPEED_PID_KP 0.12f
 #define BIG_YAW_MOTOR_SPEED_PID_KI 0.0002f // 80.0f
 #define BIG_YAW_MOTOR_SPEED_PID_KD 0.0f
 #define BIG_YAW_MOTOR_SPEED_PID_MAX_OUT 11.0f
-#define BIG_YAW_MOTOR_SPEED_PID_MAX_IOUT 0.5f
+#define BIG_YAW_MOTOR_SPEED_PID_MAX_IOUT 0.15f
 #define BIG_YAW_MOTOR_SPEED_FF 5.0f //5.0
 #define BIG_YAW_MOTOR_CURRENT_FF 0.08f //0.02
+#define CHASSIS_FRICTION_COMPENSATE_COEFF 0.12f // 相对于底盘的底盘摩擦补偿
 
 #define BIG_YAW_MOTOR_NAV_ANGLE_PID_KP 25.0f
 #define BIG_YAW_MOTOR_NAV_ANGLE_PID_KI 0.002f
@@ -29,7 +30,7 @@
 #define BIG_YAW_MOTOR_NAV_ANGLE_PID_MAX_OUT 150.0f
 #define BIG_YAW_MOTOR_NAV_ANGLE_PID_MAX_IOUT 5.0f
 
-#define BIG_YAW_MOTOR_FOLLOW_SMALL_YAW_PID_KP 15.0f
+#define BIG_YAW_MOTOR_FOLLOW_SMALL_YAW_PID_KP 20.0f
 #define BIG_YAW_MOTOR_FOLLOW_SMALL_YAW_PID_KI 0.002f
 #define BIG_YAW_MOTOR_FOLLOW_SMALL_YAW_PID_KD 30.0f
 #define BIG_YAW_MOTOR_FOLLOW_SMALL_YAW_PID_MAX_OUT 1200.0f
