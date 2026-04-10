@@ -53,7 +53,7 @@
 #define WHEEL_MOTOR_SPEED_PID_KD 0.0f
 #define WHEEL_MOTOR_SPEED_PID_MAX_OUT 16000.0f
 #define WHEEL_MOTOR_SPEED_PID_MAX_IOUT 1000.0f
-#define WHEEL_MOTOR_CURRENT_FF 1.0f // 轮电机电流前馈系数
+#define WHEEL_MOTOR_CURRENT_FF 2.0f // 轮电机电流前馈系数
 
 #define STEER_MOTOR_SPEED_PID_KP 80.0f
 #define STEER_MOTOR_SPEED_PID_KI 0.02f 
@@ -67,9 +67,9 @@
 #define STEER_MOTOR_AGGRESIVE_ANGLE_PID_KI 0.0002f
 #define STEER_MOTOR_AGGRESIVE_ANGLE_PID_KD 2.0f
 
-#define STEER_MOTOR_ANGLE_PID_KP 3.5f //常规模式
+#define STEER_MOTOR_ANGLE_PID_KP 4.5f //常规模式
 #define STEER_MOTOR_ANGLE_PID_KI 0.0002f
-#define STEER_MOTOR_ANGLE_PID_KD 3.7f
+#define STEER_MOTOR_ANGLE_PID_KD 0.7f
 #define STEER_MOTOR_ANGLE_PID_MAX_OUT 1500.0f
 #define STEER_MOTOR_ANGLE_PID_MAX_IOUT 100.0f
 
@@ -96,8 +96,6 @@ typedef struct // 上板传下来的导航相关数据
     uint8_t buffer_energy_remain;
     uint8_t referee_power_limit;
     uint8_t total_ernergy_remain;
-    uint8_t at_middle_section;
-    uint8_t rmul_first_go_to_middle;
     uint8_t game_start;
 } nav_ctrl_t;
 

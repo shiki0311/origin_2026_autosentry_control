@@ -28,7 +28,7 @@ static void DWT_CNT_Update(void)
     if (__get_CONTROL()) // 不在中断中,使用互斥锁;在中断则直接执行即可
         if (osOK != osMutexWait(DWT_MUTEX, 0))
             return;
-            
+
     volatile uint32_t cnt_now = DWT->CYCCNT;
     if (cnt_now < CYCCNT_LAST)
         CYCCNT_RountCount++;
@@ -37,8 +37,16 @@ static void DWT_CNT_Update(void)
     osMutexRelease(DWT_MUTEX);
 }
 
+static uint8_t is_dwt_initialized = 0; // DWT初始化状态标志
+
 uint8_t DWT_Init(uint32_t CPU_Freq_mHz)
 {
+    // 如果已经成功初始化过，不再重复初始化，直接返回0（成功状态）
+    if (is_dwt_initialized)
+    {
+        return 0;
+    }
+
     /* 使能DWT外设 */
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 
@@ -52,22 +60,29 @@ uint8_t DWT_Init(uint32_t CPU_Freq_mHz)
     CPU_FREQ_Hz_ms = CPU_FREQ_Hz / 1000;
     CPU_FREQ_Hz_us = CPU_FREQ_Hz / 1000000;
     CYCCNT_RountCount = 0;
-    osMutexDef(dwt_mutex);
-    DWT_MUTEX = osMutexCreate(osMutex(dwt_mutex));
-    DWT_CNT_Update();
-		if(DWT->CYCCNT)
-		{
-			 return 0; /*clock cycle counter started*/
-		}
-		else
-		{
-			return 1; /*clock cycle counter not started*/
-		}
 
+    // 创建互斥锁前确保互斥锁未被创建，避免内存泄漏
+    if (DWT_MUTEX == NULL)
+    {
+        osMutexDef(dwt_mutex);
+        DWT_MUTEX = osMutexCreate(osMutex(dwt_mutex));
+    }
+
+    DWT_CNT_Update();
+    if (DWT->CYCCNT)
+    {
+        is_dwt_initialized = 1; // 标记初始化成功
+        return 0;               /*clock cycle counter started*/
+    }
+    else
+    {
+        return 1; /*clock cycle counter not started*/
+    }
 }
 
 void DWT_DeInit(void)
 {
+
     // 1. 关闭 CYCCNT 计数器（停止计数）
     DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; // 清除 CYCCNTENA 位（bit0）
 
@@ -91,6 +106,9 @@ void DWT_DeInit(void)
     SysTime.s = 0;
     SysTime.ms = 0;
     SysTime.us = 0;
+
+    // 5. 清除初始化标志
+    is_dwt_initialized = 0; // 清除初始化标志
 }
 
 float DWT_GetDeltaT(uint32_t *cnt_last)

@@ -428,10 +428,10 @@ static void Calculate_Gimbal_Motor_Target_Current(pid_type_def *gimbal_motor_pid
         {
             PID_calc(gimbal_motor_pid, now, set);
             
-            float angle_diff = (mode == POSITION_INS) ? 
+            float angle_diff = (mode == POSITION_INS) ?  //用于速度前馈
                 (motor->INS_angle_set - motor->INS_angle_set_last) : 
                 (motor->ENC_angle_set - motor->ENC_angle_set_last);
-                
+           
             motor->INS_speed_set = gimbal_motor_pid->out + motor->speed_ff * angle_diff;
             
             PID_calc(&motor->speed_pid, motor->INS_speed_now, motor->INS_speed_set);
@@ -501,6 +501,7 @@ static void gimbal_safe_handler(void)
     PID_clear(&DM_big_yaw_motor.nav_angle_pid);
     PID_clear(&DM_big_yaw_motor.follow_small_yaw_pid);
     PID_clear(&DM_big_yaw_motor.auto_aim_pid);
+    PID_clear(&DM_big_yaw_motor.omni_pid);
 
     PID_clear(&gimbal_pitch_motor.speed_pid);
     PID_clear(&gimbal_pitch_motor.angle_pid);

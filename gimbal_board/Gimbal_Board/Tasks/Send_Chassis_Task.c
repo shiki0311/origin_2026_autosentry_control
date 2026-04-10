@@ -34,10 +34,8 @@ union
         uint64_t health_state : 1;
         uint64_t energy_buffer : 6; //当前底盘剩余缓冲能量
         uint64_t chassis_max_power : 8; //裁判系统传过来的底盘功率上限
-        uint64_t at_middle_section : 1;     // 是否处于RMUL中央增益区
-        uint64_t rmul_first_go_to_middle : 1; // 是否是RMUL开局抢中
         uint64_t game_start : 1; // 比赛是否开始
-        uint64_t reserved : 10;         // 保留位
+        uint64_t reserved : 12;         // 保留位
     }single_data;
 } __attribute__((packed)) nav_data_u;
 
@@ -94,8 +92,7 @@ void Send_Chassis_Task()
         nav_data_u.single_data.health_state = Referee_Data_Transmit.health_state = Health_State_Update();
         nav_data_u.single_data.energy_buffer = (Power_Heat_Data.buffer_energy > 63) ? 63 : Power_Heat_Data.buffer_energy; // 限制在0~(2^6-1)，一般不会超限
         nav_data_u.single_data.chassis_max_power = (Game_Robot_State.chassis_power_limit > 255) ? 255 : Game_Robot_State.chassis_power_limit;  //限制在0~(2^8-1)，一般不会超限
-        nav_data_u.single_data.at_middle_section = (Game_Status.game_progress == 4 && ((RFID_Status.rfid_status >> 23) & 0x01)) ? 1 : 0;
-				nav_data_u.single_data.rmul_first_go_to_middle = NUC_Data_Receive.occupy_middle_section;
+
         nav_data_u.single_data.game_start = (Game_Status.game_progress == 4) ? 1 : 0;
 
         Allocate_Can_Msg(nav_data_u.packed_data[0], nav_data_u.packed_data[1], nav_data_u.packed_data[2], nav_data_u.packed_data[3], CAN_GIMBAL_TO_CHASSIS_SECOND_CMD);

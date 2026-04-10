@@ -136,7 +136,10 @@ static void INS_init(void)
 
     IMU_QuaternionEKF_Init(10, 0.0001, 10000000, 1.0, 0); // 初始化卡尔曼滤波
 
-    DWT_Init(CPU_FREQ_MHZ); // 启动DWT，用于高精度计时
+    while(DWT_Init(CPU_FREQ_MHZ)) // 启动DWT，用于高精度计时
+    {
+        osDelay(10);
+    }
 
     // get the handle of task
     // 获取当前任务的任务句柄，
@@ -336,7 +339,7 @@ static void imu_temp_control(fp32 temp)
             temp_constant_time++;
             if (temp_constant_time > 200)
             {
-                // 达到设置温度，将积分项设置为一半最大功率，加速收敛
+                // 达到设置温度，将积分项设置为四分之一最大功率，加速收敛
                 //
                 first_temperate = 1;
                 INS.imu_temp_pid.Iout = MPU6500_TEMP_PWM_MAX / 4.0f;
