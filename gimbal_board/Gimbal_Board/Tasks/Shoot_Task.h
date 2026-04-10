@@ -1,0 +1,35 @@
+#ifndef _SHOOT_TASK
+#define _SHOOT_TASK
+
+#include "main.h"
+
+#define HAVE_REFEREE_SYSTEM 1 // 哨兵当前是否安装裁判系统
+
+#define DIAL_MOTOR_SPEED_PID_KP 0.7f
+#define DIAL_MOTOR_SPEED_PID_KI 0.05f
+#define DIAL_MOTOR_SPEED_PID_KD 0.015f
+#define DIAL_MOTOR_SPEED_PID_MAX_OUT 1900.0f
+#define DIAL_MOTOR_SPEED_PID_MAX_IOUT 100.0f
+
+#define DIAL_MOTOR_ANGLE_PID_KP 0.3f
+#define DIAL_MOTOR_ANGLE_PID_KI 0.0f
+#define DIAL_MOTOR_ANGLE_PID_KD 0.2f
+#define DIAL_MOTOR_ANGLE_PID_MAX_OUT 10000.0f
+#define DIAL_MOTOR_ANGLE_PID_MAX_IOUT 10000.0f
+
+#define DIAL_SPEED_LOW 500 
+#define DIAL_SPEED_HIGH 1000
+
+#define DIAL_MOROR_MIN_ANGLE_BASE 15.0f
+
+#define FRIC_MOTOR_SPEED_PID_KP 20.8f
+#define FRIC_MOTOR_SPEED_PID_KI 0.024f
+#define FRIC_MOTOR_SPEED_PID_KD 0.0f
+#define FRIC_MOTOR_SPEED_PID_MAX_OUT 16000.0f
+#define FRIC_MOTOR_SPEED_PID_MAX_IOUT 4000.0f
+
+#define DIAL_BACK_CURRENT 1500.0f //卡弹时拨弹盘反转电流
+
+void Shoot_Task(void const *argument);
+
+#endif

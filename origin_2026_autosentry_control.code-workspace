@@ -1,0 +1,52 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"COMMIT_EDITMSG": "git-commit",
+			"chassis_task.h": "c",
+			"struct_typedef.h": "c",
+			"led_task.h": "c",
+			"freertos.h": "c",
+			"remote_control.h": "c",
+			"stm32f4xx_it.h": "c",
+			"bsp_can.h": "c",
+			"ins_task.h": "c",
+			"main.h": "c",
+			"cmsis_os.h": "c",
+			"referee.h": "c",
+			"referee_usart_task.h": "c",
+			"bsp_buzzer.h": "c",
+			"cboard_to_nuc_usbd_communication.h": "c",
+			"shoot_task.h": "c",
+			"detect_task.h": "c",
+			"task.h": "c",
+			"stm32f4xx_hal.h": "c",
+			"stm32f4xx_hal_conf.h": "c",
+			"stm32f4xx_hal_can.h": "c",
+			"string.h": "c",
+			"protocol.h": "c",
+			"stdint.h": "c",
+			"fifo.h": "c",
+			"motor.h": "c",
+			"bsp_dwt.h": "c",
+			"cmath": "c",
+			"user_common_lib.h": "c",
+			"tim.h": "c",
+			"gimbal_task.h": "c",
+			"usb_device.h": "c",
+			"queue.h": "c",
+			"Can_Timer_Task.h": "c",
+			"bsp_can_chassis.h": "c",
+			"bsp_can_gimbal.h": "c",
+			"math.h": "c",
+			"stm32f4xx_hal_crc.h": "c",
+			"bsp_dmimu.h": "c",
+			"stm32f4xx_hal_def.h": "c",
+			"can.h": "c"
+		}
+	}
+}

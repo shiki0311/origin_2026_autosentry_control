@@ -1,0 +1,149 @@
+#include "bsp_usart.h"
+#include "main.h"
+
+extern UART_HandleTypeDef huart1;
+extern DMA_HandleTypeDef hdma_usart1_tx;
+extern DMA_HandleTypeDef hdma_usart1_rx;
+extern UART_HandleTypeDef huart6;
+extern DMA_HandleTypeDef hdma_usart6_rx;
+extern DMA_HandleTypeDef hdma_usart6_tx;
+
+
+void usart1_init(uint8_t *rx1_buf, uint8_t *rx2_buf, uint16_t dma_buf_num)
+{
+
+    //enable the DMA transfer for the receiver and tramsmit request
+    //使能DMA串口接收和发送
+    SET_BIT(huart1.Instance->CR3, USART_CR3_DMAR);
+    SET_BIT(huart1.Instance->CR3, USART_CR3_DMAT);
+
+    //enalbe idle interrupt
+    //使能空闲中断
+    __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+
+
+
+    //disable DMA
+    //失效DMA
+    __HAL_DMA_DISABLE(&hdma_usart1_rx);
+    
+    while(hdma_usart1_rx.Instance->CR & DMA_SxCR_EN)
+    {
+        __HAL_DMA_DISABLE(&hdma_usart1_rx);
+    }
+
+    __HAL_DMA_CLEAR_FLAG(&hdma_usart1_rx, DMA_LISR_TCIF1);
+
+    hdma_usart1_rx.Instance->PAR = (uint32_t) & (USART1->DR);
+    //memory buffer 1
+    //内存缓冲区1
+    hdma_usart1_rx.Instance->M0AR = (uint32_t)(rx1_buf);
+    //memory buffer 2
+    //内存缓冲区2
+    hdma_usart1_rx.Instance->M1AR = (uint32_t)(rx2_buf);
+    //data length
+    //数据长度
+    __HAL_DMA_SET_COUNTER(&hdma_usart1_rx, dma_buf_num);
+
+    //enable double memory buffer
+    //使能双缓冲区
+    SET_BIT(hdma_usart1_rx.Instance->CR, DMA_SxCR_DBM);
+
+    //enable DMA
+    //使能DMA
+    __HAL_DMA_ENABLE(&hdma_usart1_rx);
+
+
+    //disable DMA
+    //失效DMA
+    __HAL_DMA_DISABLE(&hdma_usart1_tx);
+
+    while(hdma_usart1_tx.Instance->CR & DMA_SxCR_EN)
+    {
+        __HAL_DMA_DISABLE(&hdma_usart1_tx);
+    }
+
+    hdma_usart1_tx.Instance->PAR = (uint32_t) & (USART1->DR);
+
+}
+
+void usart1_tx_dma_enable(uint8_t *data, uint16_t len)
+{
+    //disable DMA
+    //失效DMA
+    __HAL_DMA_DISABLE(&hdma_usart1_tx);
+
+    while(hdma_usart1_tx.Instance->CR & DMA_SxCR_EN)
+    {
+        __HAL_DMA_DISABLE(&hdma_usart1_tx);
+    }
+
+    __HAL_DMA_CLEAR_FLAG(&hdma_usart1_tx, DMA_HISR_TCIF6);
+
+    hdma_usart1_tx.Instance->M0AR = (uint32_t)(data);
+    __HAL_DMA_SET_COUNTER(&hdma_usart1_tx, len);
+
+    __HAL_DMA_ENABLE(&hdma_usart1_tx);
+}
+
+void Referee_USART6_Init(uint8_t *Buffer0, uint8_t *Buffer1, uint16_t BufferLength)
+{
+    /* 使能串口DMA */
+    SET_BIT(Referee_UART.Instance->CR3, USART_CR3_DMAR);
+    SET_BIT(Referee_UART.Instance->CR3, USART_CR3_DMAT);
+
+    /* 使能串口空闲中断 */
+    __HAL_UART_ENABLE_IT(&Referee_UART, UART_IT_IDLE);
+
+    /* 确保DMA RX失能 */
+    while (Referee_UART.hdmarx->Instance->CR & DMA_SxCR_EN)
+    {
+        __HAL_DMA_DISABLE(Referee_UART.hdmarx);
+    }
+
+    /* 清空标志位 */
+    __HAL_DMA_CLEAR_FLAG(Referee_UART.hdmarx, DMA_LISR_TCIF1);
+
+    /* 设置接收双缓冲区 */
+    Referee_UART.hdmarx->Instance->PAR = (uint32_t)&(Referee_UART.Instance->DR);
+    Referee_UART.hdmarx->Instance->M0AR = (uint32_t)(Buffer0);
+    Referee_UART.hdmarx->Instance->M1AR = (uint32_t)(Buffer1);
+
+    /* 设置数据长度 */
+    __HAL_DMA_SET_COUNTER(Referee_UART.hdmarx, BufferLength);
+
+    /* 使能双缓冲区 */
+    SET_BIT(Referee_UART.hdmarx->Instance->CR, DMA_SxCR_DBM);
+
+    /* 使能DMA RX */
+    __HAL_DMA_ENABLE(Referee_UART.hdmarx);
+
+    /* 确保DMA TX失能 */
+    while (Referee_UART.hdmatx->Instance->CR & DMA_SxCR_EN)
+    {
+        __HAL_DMA_DISABLE(Referee_UART.hdmatx);
+    }
+
+    Referee_UART.hdmatx->Instance->PAR = (uint32_t)&(Referee_UART.Instance->DR);
+}
+
+void usart6_tx_dma_enable(uint8_t *data, uint16_t len)
+{
+    //disable DMA
+    //失效DMA
+    __HAL_DMA_DISABLE(&hdma_usart6_tx);
+
+    while(hdma_usart6_tx.Instance->CR & DMA_SxCR_EN)
+    {
+        __HAL_DMA_DISABLE(&hdma_usart6_tx);
+    }
+
+    __HAL_DMA_CLEAR_FLAG(&hdma_usart6_tx, DMA_HISR_TCIF6);
+
+    hdma_usart6_tx.Instance->M0AR = (uint32_t)(data);
+    __HAL_DMA_SET_COUNTER(&hdma_usart6_tx, len);
+
+    __HAL_DMA_ENABLE(&hdma_usart6_tx);
+}
+
+
