@@ -43,9 +43,8 @@ void referee_usart_task(void const *argument)
 		Sentry_PushUp_Cmd_Ensure_Revive(&Sentry_Auto_Cmd_Send, Game_Robot_State.robot_id);
 		vTaskDelay(4);
 		Sentry_PushUp_Cmd_Change_Mode(&Sentry_Auto_Cmd_Send, Game_Robot_State.robot_id);
-		vTaskDelay(4);
+		vTaskDelay(12);
 //		Sentry_To_Lidar_Cmd(&Sentry_Interactive_With_Liadr, Game_Robot_State.robot_id);
-		vTaskDelay(8);
 	}
 }
 

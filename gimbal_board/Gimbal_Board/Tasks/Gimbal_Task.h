@@ -93,17 +93,17 @@
 #define PITCH_MOTOR_AUTO_AIM_PID_MAX_OUT 2000.0f
 #define PITCH_MOTOR_AUTO_AIM_PID_MAX_IOUT 0.0f
 /****************************************云台零点，限位，电机运动参数*******************************************************/
-#define SMALL_YAW_MIDDLE_ENC_ZERO 8267 // 小yaw轴中间位置编码器值，作为大yaw轴跟随小yaw轴时的参考零点
+#define SMALL_YAW_MIDDLE_ENC_ZERO 3525 // 小yaw轴中间位置编码器值，作为大yaw轴跟随小yaw轴时的参考零点
 
-#define SMALL_YAW_NAV_SEEK_ECD_MAX 8850 //导航索敌模式搜索角度最大值,为小yaw电机编码器值
-#define SMALL_YAW_NAV_SEEK_ECD_MIN 7670 //导航索敌模式搜索角度最小值，为小yaw电机编码器值减去8192（跟安装位置有关，索敌时电机活动范围越过编码器零点了）
+#define SMALL_YAW_NAV_SEEK_ECD_MAX 4140 //导航索敌模式搜索角度最大值,为小yaw电机编码器值
+#define SMALL_YAW_NAV_SEEK_ECD_MIN 2900 //导航索敌模式搜索角度最小值，为小yaw电机编码器值减去8192（跟安装位置有关，索敌时电机活动范围越过编码器零点了）
 #define SMALL_YAW_NAV_SEEK_STEP 0.16 //导航索敌模式下小yaw轴每次调整的角度步进，单位：度
 
 #define PITCH_ECD_ANGLE_MAX (7100 * GM6020_ENC_TO_DEGREE) // pitch轴电子限位最大角度，用编码器值标定
 #define PITCH_ECD_ANGLE_MIN (6050 * GM6020_ENC_TO_DEGREE) // pitch轴电子限位最小角度，用编码器值标定 
 
 #define PITCH_NAV_SEEK_ENEMY_ANGLE_MAX 4.0f 
-#define PITCH_NAV_SEEK_ENEMY_ANGLE_MIN -20.0f 
+#define PITCH_NAV_SEEK_ENEMY_ANGLE_MIN -4.0f 
 #define PITCH_NAV_SEEK_ENEMY_STEP 0.12f 
 #define PITCH_NAV_SEEK_OUTPOST_ANGLE_MAX 15.0f  
 #define PITCH_NAV_SEEK_OUTPOST_ANGLE_MIN -21.0f

@@ -327,7 +327,7 @@ extern "C"
 	} radar_info_t; 
 
 	/* 0x030X --------------------------------------------------------------------*/
-	typedef __packed struct // 0x0301 机器人间通信结构体，包括数据头和数据,2025赛季数据来源为雷达
+	typedef __packed struct // 0x0301 机器人间通信结构体，包括数据头和数据,2026赛季数据来源为雷达
 	{
 		uint16_t data_cmd_id;
 		uint16_t sender_ID;
@@ -355,7 +355,7 @@ extern "C"
 			uint32_t reserved : 8; 
 	} sentry_cmd_t;
 
-	typedef __packed struct // 0x0301 机器人间通信 哨兵与其他机器人通信指令，此为发送结构体（2025赛季为发送给雷达）
+	typedef __packed struct // 0x0301 机器人间通信 哨兵与其他机器人通信指令，此为发送结构体（2025赛季为发送给雷达，2026赛季未使用）
 	{
 		uint16_t bullet_remaining_num; // 哨兵剩余发弹量
 		uint8_t reach_enemy_hero;	   // 哨兵是否到达抓英雄的目标点位

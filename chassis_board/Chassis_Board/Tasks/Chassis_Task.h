@@ -48,6 +48,8 @@
 #define NAV_MAX_SPEED (4.0 * M_PER_SEC_TO_RPM)   // 导航模式下底盘最大速度，单位m/s * (m/s转rpm)
 
 //底盘控制参数（pid,前馈）
+#define CAP_USE_THRESHOLD 0.2f
+
 #define WHEEL_MOTOR_SPEED_PID_KP 10.5f
 #define WHEEL_MOTOR_SPEED_PID_KI 0.002f
 #define WHEEL_MOTOR_SPEED_PID_KD 0.0f

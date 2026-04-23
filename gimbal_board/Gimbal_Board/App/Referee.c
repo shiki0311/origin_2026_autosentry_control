@@ -371,8 +371,8 @@ void Sentry_PushUp_Cmd_Change_Mode(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint
 	memset(&Sentry_Auto_Cmd->sentry_cmd, 0, sizeof(sentry_cmd_t));
 	Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = toe_is_error(NUC_DATA_TOE) ? MOVE_MODE : NUC_Data_Receive.target_mode; // 设置哨兵默认为移动模式,测试用
 
-	if (!Buff_Musk.remaining_energy)
-		Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = ATTACK_MODE;
+	// if (!Buff_Musk.remaining_energy)
+	// 	Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = ATTACK_MODE;
 
 	Sentry_Auto_Cmd->CRC16 = CRC16_Calculate((uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t) - 2); // frame_tail CRC16校验
 	HAL_UART_Transmit_DMA(&Referee_UART, (uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t));
