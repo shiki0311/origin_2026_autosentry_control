@@ -38,6 +38,8 @@
 CAN_RxHeaderTypeDef rx_header; // debug用，看can接收正不正常
 chassis_rc_ctrl_t chassis_rc_ctrl = {0};
 uint32_t real_power; // 功率计测出的功率
+uint16_t real_v;
+uint16_t real_i;
 // int32_t trans = 0; 
 // uint16_t can_err_cnt[9];
 // uint16_t can_rec_cnt[9];
@@ -135,17 +137,6 @@ void Create_Can_Send_Queues()
         Error_Handler();
 }
 /*********************************************CAN接收函数*********************************************************************/
-float EnergyDataToFloat(const uint8_t dat[8])
-{
-    uint32_t u32 = ((uint32_t)dat[0] << 24) |
-                   ((uint32_t)dat[1] << 16) |
-                   ((uint32_t)dat[2] << 8) |
-                   ((uint32_t)dat[3]);
-
-    float result;
-    memcpy(&result, &u32, sizeof(result));
-    return result;
-}
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
     	// static int flag = 0;
@@ -229,7 +220,9 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
         case POWER_METER_RecID:
         {
-            real_power = EnergyDataToFloat(rx_data);
+            real_v = rx_data[0] << 8 | rx_data[1];
+            real_i = rx_data[2] << 8 | rx_data[3];
+            real_power = rx_data[4] << 8 | rx_data[5];
             // if (trans == 1)
             // {
             //     can_rec_cnt[8]++;

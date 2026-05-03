@@ -158,6 +158,12 @@ void NUC_USBD_Tx(uint8_t cmdid)
 		Referee_Data_Transmit.rfid_status = RFID_Status.rfid_status;
 		Referee_Data_Transmit.event_data = Event_Data.event_type;
 		Referee_Data_Transmit.defend_fortress = Student_Interactive_Data.defend_fortress;
+		Referee_Data_Transmit.outpost_alive = Student_Interactive_Data.outpost_alive;
+		Referee_Data_Transmit.catch_hero = Student_Interactive_Data.catch_hero;
+		Referee_Data_Transmit.catch_engineer = Student_Interactive_Data.catch_engineer;
+		Referee_Data_Transmit.bumpy_exist_enemy = Student_Interactive_Data.bumpy_exist_enemy;
+		Referee_Data_Transmit.enemy_base_flower = Student_Interactive_Data.enemy_base_flower;
+		Referee_Data_Transmit.could_fire = Game_Robot_State.power_management_shooter_output;
 
 		if(Robot_Command.target_position_x == 0 && Robot_Command.target_position_y == 0)
 			Referee_Data_Transmit.rush_home = 0;

@@ -59,6 +59,8 @@ extern chassis_rc_ctrl_t chassis_rc_ctrl;
 extern QueueHandle_t CAN1_send_queue; // CAN1消息队列句柄,此队列用于储存CAN1的发送消息
 extern QueueHandle_t CAN2_send_queue; // CAN2消息队列句柄，此队列用于储存CAN2的发送消息
 extern uint32_t real_power; //功率计数据
+extern uint16_t real_i;
+extern uint16_t real_v;
 
 void Can_Filter_Init(void);
 void Can_Msg_Init(void);

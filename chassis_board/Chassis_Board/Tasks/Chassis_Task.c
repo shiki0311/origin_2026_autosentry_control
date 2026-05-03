@@ -659,7 +659,7 @@ static void Set_Rotate_Wz(fp32 *wz)
 			case NAV_ROTATE_NORMAL:
 				// 常规导航模式，在rmuc下为零速陀螺，有时需要改为低速陀螺
 				target_wz = ROTATE_WZ_MIN * RAD_PER_SEC_TO_RPM;
-				ramp_coeff = 0.1f;
+				ramp_coeff = 0.05f;
 				break;
 			}
 		}
@@ -668,7 +668,7 @@ static void Set_Rotate_Wz(fp32 *wz)
 	if (chassis_control.waiting_for_wz_slow_down)
 	{
 		target_wz = 0.0f; // 切换过程强制将目标角速度置为0
-		ramp_coeff = 0.05f; 
+		ramp_coeff = 0.03f; 
 	}
 
 	// 统一经过斜坡控制器输出最终目标wz
@@ -1011,7 +1011,7 @@ void Chassis_Task(void const *argument)
 			Allocate_Can_Msg(95, 0, 0, 0, CAN_CAP_CMD);
 #endif
 		}
-		//		Vofa_Send_Data4(real_power, 0, 0, 0);
+		// Vofa_Send_Data4(((float)real_power) / 100, ((float)real_v) / 100, ((float)real_i) / 100, 0);
 		cnt == 120 ? cnt = 1 : cnt++; // div等于2,3,4,5的最小公倍数时重置
 		vTaskDelay(1);
 	}

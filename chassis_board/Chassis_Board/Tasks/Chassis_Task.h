@@ -33,7 +33,7 @@
 #define STEER_MOROR1_ENC_OFFSET 4782 //1号舵电机的编码器偏置（范围0-8191）
 #define STEER_MOROR2_ENC_OFFSET 7673 //2号舵电机的编码器偏置（范围0-8191）
 #define STEER_MOROR3_ENC_OFFSET 764 //3号舵电机的编码器偏置（范围0-8191）
-#define STEER_MOROR4_ENC_OFFSET 6112 //4号舵电机的编码器偏置（范围0-8191）
+#define STEER_MOROR4_ENC_OFFSET 3463 //4号舵电机的编码器偏置（范围0-8191）
 
 //小陀螺相关参数
 #define ROTATE_WZ_MAX 12.0  // 小陀螺正向速度,最高速，单位：rad/s
