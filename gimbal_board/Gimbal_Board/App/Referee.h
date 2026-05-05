@@ -546,8 +546,7 @@ extern "C"
 	void Referee_UnpackFifoData(unpack_data_t *p_obj, fifo_s_t *referee_fifo);
 	void Referee_SolveFifoData(uint8_t *frame);
 
-	void Sentry_PushUp_Cmd_Ensure_Revive(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID);
-	void Sentry_PushUp_Cmd_Change_Mode(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID);
+	void Sentry_PushUp_Cmd(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID);
 
 	void Sentry_To_Lidar_Cmd(Sentry_Interactive_With_Liadr_t *Sentry_Interactive_With_Lidar_Cmd, uint8_t RobotID);
 

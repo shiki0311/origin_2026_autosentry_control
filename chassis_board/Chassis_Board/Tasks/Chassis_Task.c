@@ -309,7 +309,7 @@ static void Chassis_Max_Power_Update(fp32 *chassis_max_power) // ¸ù¾Ý²»Í¬Ä£Ê½Ñ¡Ô
 	{
 	case RC_SW_DOWN:
 	case RC_SW_MID:
-		chassis_control.chassis_max_power_mode = REMOTE_CONTROL;
+			chassis_control.chassis_max_power_mode = REMOTE_CONTROL;
 		break;
 	case RC_SW_UP:
 		if (nav_ctrl.chassis_target_mode == NAV_CHASSIS_FOLLOW_GIMBAL)
@@ -329,10 +329,11 @@ static void Chassis_Max_Power_Update(fp32 *chassis_max_power) // ¸ù¾Ý²»Í¬Ä£Ê½Ñ¡Ô
 		case REMOTE_CONTROL:
 #if HAVE_REFEREE_SYSTEM
 			*chassis_max_power = nav_ctrl.referee_power_limit * 0.9f + cap_data.cap_per * 100;
+			// *chassis_max_power = 120;
 #else
 			*chassis_max_power = 100 + cap_data.cap_per * 100
 #endif
-			break;
+				break;
 
 		case PASS_BUMPY:
 #if HAVE_REFEREE_SYSTEM
@@ -525,14 +526,14 @@ static void Set_Chassis_VxVy(fp32 yaw_chassis_zero_rad, fp32 *chassis_vx, fp32 *
 			}
 			if (bumpy_force_stop_xy)
 			{
-				if (nav_ctrl.referee_power_limit >= 70 || (cap_data.cap_per >= (CAP_USE_THRESHOLD + 0.4f) && (!toe_is_error(CAP_TOE))))
+				if (nav_ctrl.referee_power_limit >= PASS_BUMPY_POWER_THRESHOLD || (cap_data.cap_per >= SWITCH_TO_PASS_BUMPY_CAP_THRESHOLD && (!toe_is_error(CAP_TOE))))
 				{
 					bumpy_force_stop_xy = FALSE;
 				}
 			}
 			if (follow_gimbal_force_stop_xy && nav_ctrl.chassis_target_mode == NAV_CHASSIS_FOLLOW_GIMBAL)
 			{
-				if (my_fabsf(chassis_control.current_wz) < 50.0f) // ×ªËÙÏÂ½µµ½ãÐÖµÒÔÏÂ²ÅÄÜ×ß
+				if (my_fabsf(chassis_control.current_wz) < ROTATE_SLOW_DOWN_THRESHOLD) // ×ªËÙÏÂ½µµ½ãÐÖµÒÔÏÂ²ÅÄÜ×ß
 				{
 					follow_gimbal_force_stop_xy = FALSE;
 				}
@@ -1012,6 +1013,8 @@ void Chassis_Task(void const *argument)
 #endif
 		}
 		// Vofa_Send_Data4(((float)real_power) / 100, ((float)real_v) / 100, ((float)real_i) / 100, 0);
+		// Vofa_Send_Data4(nav_ctrl.just_revive * 100, chassis_control.bumpy_revive_power_timer, chassis_control.chassis_max_power, cap_data.cap_per * 100);
+
 		cnt == 120 ? cnt = 1 : cnt++; // divµÈÓÚ2,3,4,5µÄ×îÐ¡¹«±¶ÊýÊ±ÖØÖÃ
 		vTaskDelay(1);
 	}

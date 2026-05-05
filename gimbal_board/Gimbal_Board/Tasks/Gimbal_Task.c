@@ -762,7 +762,7 @@ void Gimbal_Task(void const *argument)
 //	    Allocate_Can_Msg(500, gimbal_pitch_motor.give_current, 0, 0, CAN_SMALL_YAW_AND_PITCH_CMD);
         //		Allocate_Can_Msg(0, 0, 0, 0, CAN_SMALL_YAW_AND_PITCH_CMD);
 
-       Vofa_Send_Data4(gimbal_small_yaw_motor.give_current,motor_measure_small_yaw.given_current,gimbal_small_yaw_motor.INS_speed_set,gimbal_small_yaw_motor.INS_speed_now);
+//       Vofa_Send_Data4(gimbal_small_yaw_motor.give_current,motor_measure_small_yaw.given_current,gimbal_pitch_motor.INS_speed_set,gimbal_pitch_motor.INS_speed_now);
 
         cnt == 120 ? cnt = 1 : cnt++; // div等于2,3,4,5的最小公倍数时重置
         vTaskDelay(2);

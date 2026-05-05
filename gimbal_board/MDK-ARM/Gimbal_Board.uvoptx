@@ -235,6 +235,11 @@
           <WinNumber>1</WinNumber>
           <ItemText>Buff_Musk,0x10</ItemText>
         </Ww>
+        <Ww>
+          <count>16</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>NUC_Data_Receive</ItemText>
+        </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>

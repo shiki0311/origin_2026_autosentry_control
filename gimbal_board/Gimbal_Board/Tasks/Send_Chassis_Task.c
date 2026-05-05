@@ -130,9 +130,9 @@ void Send_Chassis_Task()
 
         static uint16_t last_robot_hp;
         static uint8_t revive_counter = 0;
-        if ((Game_Robot_State.current_HP > 0) && (last_robot_hp == 0)) //复活后发十次刚复活，防止漏发
+        if ((Game_Robot_State.current_HP > 0) && (last_robot_hp == 0)) //复活后发70次刚复活，防止漏发
         {
-            revive_counter = 10;
+            revive_counter = 70;
         }
 
         if (revive_counter > 0)

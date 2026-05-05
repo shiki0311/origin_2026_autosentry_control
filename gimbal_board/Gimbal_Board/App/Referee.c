@@ -314,12 +314,12 @@ void Referee_SolveFifoData(uint8_t *frame)
 			  ##### 哨兵自主决策发送函数 #####
   ==============================================================================*/
 /**
- * @description: 向裁判系统发送哨兵确认复活指令
+ * @description: 向裁判系统发送哨兵确认复活指令和切换姿态指令
  * @return {*}
  * @param {Sentry_Auto_Cmd_Send_t} *Sentry_Auto_Cmd
  * @param {uint8_t} RobotID
  */
-void Sentry_PushUp_Cmd_Ensure_Revive(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID)
+void Sentry_PushUp_Cmd(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID)
 {
 	/* 填充 frame_header */
 	Sentry_Auto_Cmd->Referee_Transmit_Header.SOF = HEADER_SOF;
@@ -336,51 +336,22 @@ void Sentry_PushUp_Cmd_Ensure_Revive(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, ui
 	Sentry_Auto_Cmd->Interactive_Header.receiver_ID = Referee_Server;	// 接收者ID
 
 	/* 填充 sentry_cmd */
-	//先把结构体置零，以防服务器处理确认复活之前的请求而错过复活指令
+	// 先把结构体置零，以防服务器处理确认复活之前的请求而错过复活指令
 	memset(&Sentry_Auto_Cmd->sentry_cmd, 0, sizeof(sentry_cmd_t));
+	Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = toe_is_error(NUC_DATA_TOE) ? MOVE_MODE : NUC_Data_Receive.target_mode;
+	//    if (!Buff_Musk.remaining_energy)
+	//        Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = ATTACK_MODE;
+	//    else
+	//        Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = MOVE_MODE;
+
 	Sentry_Auto_Cmd->sentry_cmd.ensure_revive = Sentry_Info.can_revive_free;	// 可以复活的话请求复活
 	Sentry_Auto_Cmd->CRC16 = CRC16_Calculate((uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t) - 2); // frame_tail CRC16校验
 
 	HAL_UART_Transmit_DMA(&Referee_UART, (uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t));
 }
 
-/**
- * @description: 向裁判系统发送切换姿态指令
- * @return {*}
- * @param {Sentry_Auto_Cmd_Send_t} *Sentry_Auto_Cmd
- * @param {uint8_t} RobotID
- */
-void Sentry_PushUp_Cmd_Change_Mode(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID)
-{
-	/* 填充 frame_header */
-	Sentry_Auto_Cmd->Referee_Transmit_Header.SOF = HEADER_SOF;
-	Sentry_Auto_Cmd->Referee_Transmit_Header.data_length = 10;
-	Sentry_Auto_Cmd->Referee_Transmit_Header.seq = Sentry_Auto_Cmd->Referee_Transmit_Header.seq + 1;
-	Sentry_Auto_Cmd->Referee_Transmit_Header.CRC8 = CRC08_Calculate((uint8_t *)(&Sentry_Auto_Cmd->Referee_Transmit_Header), 4);
-
-	/* 填充 cmd_id */
-	Sentry_Auto_Cmd->CMD_ID = STUDENT_INTERACTIVE_DATA_CMD_ID; // cmd id命令码
-
-	/* 填充 student_interactive_header */
-	Sentry_Auto_Cmd->Interactive_Header.data_cmd_id = SENTRY_AUTO_SEND; // 子内容id
-	Sentry_Auto_Cmd->Interactive_Header.sender_ID = RobotID;			// 发送者ID
-	Sentry_Auto_Cmd->Interactive_Header.receiver_ID = Referee_Server;	// 接收者ID
-
-	/* 填充 sentry_cmd */
-	//先把结构体置零，以防服务器处理切换姿态之前的请求而错过切换姿态指令
-	memset(&Sentry_Auto_Cmd->sentry_cmd, 0, sizeof(sentry_cmd_t));
-	Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = toe_is_error(NUC_DATA_TOE) ? MOVE_MODE : NUC_Data_Receive.target_mode; // 设置哨兵默认为移动模式,测试用
-
-//	if (!Buff_Musk.remaining_energy)
-//		Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = ATTACK_MODE;
-//	else
-//		Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = MOVE_MODE;
-
-	Sentry_Auto_Cmd->CRC16 = CRC16_Calculate((uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t) - 2); // frame_tail CRC16校验
-	HAL_UART_Transmit_DMA(&Referee_UART, (uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t));
-}
 	/**
-	 * @description: 向雷达发送哨兵剩余发单量和是否到达抓英雄的目标点
+	 * @description: 向雷达发送哨兵剩余发单量和是否到达抓英雄的目标点,2026赛季未使用
 	 * @return {*}
 	 * @param {Sentry_Interactive_With_Liadr_t} *Sentry_Interactive_With_Lidar_Cmd
 	 * @param {uint8_t} RobotID

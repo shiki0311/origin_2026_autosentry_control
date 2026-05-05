@@ -50,6 +50,7 @@
 //底盘控制参数（pid,前馈）
 #define CAP_USE_THRESHOLD 0.2f
 #define REVIVE_ON_BUMPY_CAP_EXTRA_THRESHOLD 0.5f
+#define SWITCH_TO_PASS_BUMPY_CAP_THRESHOLD 0.5f
 #define PASS_BUMPY_POWER_THRESHOLD 85.0f
 #define ROTATE_SLOW_DOWN_THRESHOLD 30.0f // 小陀螺减速到此阈值以下才能切换底盘跟随模式
 

@@ -13,9 +13,7 @@
 #include "referee_usart_task.h"
 #include "usart.h"
 #include "crcs.h"
-#include "fifo.h"
-#include "protocol.h"
-#include "referee.h"
+#include "Referee.h"
 #include "bsp_usart.h"
 /* Private define ------------------------------------------------------------*/
 #define Referee_FIFOInit fifo_s_init
@@ -40,10 +38,8 @@ void referee_usart_task(void const *argument)
 		Referee_UnpackFifoData(&Referee_Unpack_OBJ, &Referee_FIFO);
 		vTaskDelay(4);
 		/* 向裁判系统发送哨兵自主决策数据 */
-		Sentry_PushUp_Cmd_Ensure_Revive(&Sentry_Auto_Cmd_Send, Game_Robot_State.robot_id);
-		vTaskDelay(4);
-		Sentry_PushUp_Cmd_Change_Mode(&Sentry_Auto_Cmd_Send, Game_Robot_State.robot_id);
-		vTaskDelay(12);
+		Sentry_PushUp_Cmd(&Sentry_Auto_Cmd_Send, Game_Robot_State.robot_id);
+		vTaskDelay(16);
 //		Sentry_To_Lidar_Cmd(&Sentry_Interactive_With_Liadr, Game_Robot_State.robot_id);
 	}
 }
