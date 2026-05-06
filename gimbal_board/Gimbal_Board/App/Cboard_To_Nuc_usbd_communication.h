@@ -95,6 +95,7 @@ typedef struct
 	//模式切换相关数据
 	uint8_t chassis_mode;  //1跟头2陀螺
 	uint8_t pass_bumpy_mode;
+	uint8_t middle_hit_home; //中央高地冲家的云台模式
 	uint8_t pitch_mode; 	//打人0打前哨1
 	uint8_t target_mode;  //哨兵目标姿态
 	uint8_t occupy_middle_section; //rmul开局抢中
@@ -102,6 +103,12 @@ typedef struct
 	float small_yaw_aim;
 	float big_yaw_aim;
 	float pitch_aim;
+
+	float small_yaw_target_speed;
+	float small_yaw_target_accel;
+	float pitch_target_speed;
+	float pitch_target_accel;
+
 	bool_t fire_or_not;
 	//导航数据
 	float vx;
