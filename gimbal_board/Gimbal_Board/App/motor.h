@@ -90,8 +90,10 @@ typedef struct // 云台小yaw轴，pitch轴的6020结构体
     fp32 ENC_angle_now;
     fp32 ENC_angle_set_last;
 
-    fp32 speed_ff;   // 速度前馈项
-    fp32 current_ff; // 电流(力矩）前馈项
+    fp32 angle_err_speed_ff;     // 速度前馈项(基于目标角度的差分)
+    fp32 autoaim_mpc_speed_ff;   // 速度前馈（基于自瞄mpc)
+    fp32 speed_err_current_ff;   // 电流(力矩）前馈项(基于目标速度的差分)
+    fp32 autoaim_mpc_current_ff; // 电流(力矩）前馈项(基于自瞄mpc)
     int16_t give_current;
 
     pid_type_def speed_pid;

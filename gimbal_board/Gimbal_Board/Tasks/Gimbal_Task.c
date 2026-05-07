@@ -143,14 +143,18 @@ static void Gimbal_Motor_Control_Init(void)
     PID_init(&gimbal_small_yaw_motor.speed_pid, PID_POSITION, small_yaw_motor_speed_pid, SMALL_YAW_MOTOR_SPEED_PID_MAX_OUT, SMALL_YAW_MOTOR_SPEED_PID_MAX_IOUT);
     PID_init(&gimbal_small_yaw_motor.angle_pid, PID_POSITION, small_yaw_motor_angle_pid, SMALL_YAW_MOTOR_ANGLE_PID_MAX_OUT, SMALL_YAW_MOTOR_ANGLE_PID_MAX_IOUT);
     PID_init(&gimbal_small_yaw_motor.auto_aim_pid, PID_POSITION, small_yaw_motor_auto_aim_pid, SMALL_YAW_MOTOR_AUTO_AIM_PID_MAX_OUT, SMALL_YAW_MOTOR_AUTO_AIM_PID_MAX_IOUT);
-    gimbal_small_yaw_motor.speed_ff = SMALL_YAW_MOTOR_SPEED_FF;
-    gimbal_small_yaw_motor.current_ff = SMALL_YAW_MOTOR_CURRENT_FF;
+    gimbal_small_yaw_motor.angle_err_speed_ff = SMALL_YAW_MOTOR_ANGLE_ERROR_SPEED_FF;
+    gimbal_small_yaw_motor.autoaim_mpc_speed_ff = SMALL_YAW_MOTOR_MPC_SPEED_FF;
+    gimbal_small_yaw_motor.autoaim_mpc_current_ff = SMALL_YAW_MOTOR_MPC_CURRENT_FF;
+    gimbal_small_yaw_motor.speed_err_current_ff = SMALL_YAW_MOTOR_SPEED_ERROR_CURRENT_FF;
 
     PID_init(&gimbal_pitch_motor.speed_pid, PID_POSITION, pitch_motor_speed_pid, PITCH_MOTOR_SPEED_PID_MAX_OUT, PITCH_MOTOR_SPEED_PID_MAX_IOUT);
     PID_init(&gimbal_pitch_motor.angle_pid, PID_POSITION, pitch_motor_angle_pid, PITCH_MOTOR_ANGLE_PID_MAX_OUT, PITCH_MOTOR_ANGLE_PID_MAX_IOUT);
     PID_init(&gimbal_pitch_motor.auto_aim_pid, PID_POSITION, pitch_motor_auto_aim_pid, PITCH_MOTOR_AUTO_AIM_PID_MAX_OUT, PITCH_MOTOR_AUTO_AIM_PID_MAX_IOUT);
-    gimbal_pitch_motor.speed_ff = PITCH_MOTOR_SPEED_FF;
-    gimbal_pitch_motor.current_ff = PITCH_MOTOR_CURRENT_FF;
+    gimbal_pitch_motor.angle_err_speed_ff = PITCH_MOTOR_ANGLE_ERROR_SPEED_FF;
+    gimbal_pitch_motor.autoaim_mpc_speed_ff = PITCH_MOTOR_MPC_SPEED_FF;
+    gimbal_pitch_motor.autoaim_mpc_current_ff = PITCH_MOTOR_MPC_CURRENT_FF;
+    gimbal_pitch_motor.speed_err_current_ff = PITCH_MOTOR_SPEED_ERROR_CURRENT_FF;
 }
 
 /**
@@ -448,7 +452,7 @@ static void Calculate_Gimbal_Motor_Target_Current(pid_type_def *gimbal_motor_pid
                 (motor->INS_angle_set - motor->INS_angle_set_last) : 
                 (motor->ENC_angle_set - motor->ENC_angle_set_last);
            
-            motor->INS_speed_set = gimbal_motor_pid->out + motor->speed_ff * angle_diff;
+            motor->INS_speed_set = gimbal_motor_pid->out + motor->angle_err_speed_ff * angle_diff;
             
             PID_calc(&motor->speed_pid, motor->INS_speed_now, motor->INS_speed_set);
             motor->give_current = motor->speed_pid.out;
@@ -460,7 +464,10 @@ static void Calculate_Gimbal_Motor_Target_Current(pid_type_def *gimbal_motor_pid
         }
 
         // 应用电流前馈
-        motor->give_current += motor->current_ff * (motor->INS_speed_set - motor->INS_speed_set_last);
+        if(gimbal_control.gimbal_mode == AUTOAIM && motor_type == SMALL_YAW_MOTOR)
+            motor->give_current += limit(motor->autoaim_mpc_current_ff * NUC_Data_Receive.small_yaw_target_accel,-4000,4000);
+        else
+            motor->give_current += motor->speed_err_current_ff * (motor->INS_speed_set - motor->INS_speed_set_last);
 
         // 应用重力补偿 (仅Pitch轴)
         if (motor_type == PITCH_MOTOR)
@@ -752,7 +759,7 @@ void Gimbal_Task(void const *argument)
 
         Check_Big_Yaw_DM_Auto_Enable();
         Gimbal_Data_Update();
-        gimbal_control.gimbal_mode = Gimbal_Mode_Update();
+        gimbal_control.gimbal_mode = Gimbal_Mode_Update(); 
         Call_Gimbal_Mode_Handler(gimbal_control.gimbal_mode);
 
 //           Ctrl_DM_Motor(0, 0, 0, 0, 0);
@@ -762,7 +769,7 @@ void Gimbal_Task(void const *argument)
 //	    Allocate_Can_Msg(500, gimbal_pitch_motor.give_current, 0, 0, CAN_SMALL_YAW_AND_PITCH_CMD);
         //		Allocate_Can_Msg(0, 0, 0, 0, CAN_SMALL_YAW_AND_PITCH_CMD);
 
-//       Vofa_Send_Data4(gimbal_small_yaw_motor.give_current,motor_measure_small_yaw.given_current,gimbal_pitch_motor.INS_speed_set,gimbal_pitch_motor.INS_speed_now);
+        // Vofa_Send_Data4(gimbal_small_yaw_motor.INS_angle_set, gimbal_small_yaw_motor.INS_angle_now, gimbal_pitch_motor.INS_angle_set, gimbal_pitch_motor.INS_angle_now);
 
         cnt == 120 ? cnt = 1 : cnt++; // div等于2,3,4,5的最小公倍数时重置
         vTaskDelay(2);

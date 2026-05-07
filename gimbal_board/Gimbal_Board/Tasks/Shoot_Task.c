@@ -478,7 +478,7 @@ void Shoot_Task(void const *argument)
 		Allocate_Can_Msg(fric_motor[0].give_current, fric_motor[1].give_current, 0, 0, CAN_FRIC_CMD);
 
 		Allocate_Can_Msg(LK_MOTOR_TORQUE_CONTROL_CMD_ID, 0, LK_dial_motor.give_current, 0, CAN_DIAL_CMD);
-		// Vofa_Send_Data4(shoot_control.current_heat_without_referee*(-100), motor_measure_fric[0].given_current, motor_measure_fric[1].given_current, 0);
+		 Vofa_Send_Data4(LK_dial_motor.speed_now, LK_dial_motor.speed_set,LK_dial_motor.give_current, LK_dial_motor.given_current);
 
 		cnt == 120 ? cnt = 1 : cnt++; // div等于2,3,4,5的最小公倍数时重置
 
