@@ -104,13 +104,13 @@
 #define SMALL_YAW_NAV_SEEK_STEP 0.16 //导航索敌模式下小yaw轴每次调整的角度步进，单位：度
 
 #define PITCH_ECD_ANGLE_MAX (4583 * GM6020_ENC_TO_DEGREE) // pitch轴电子限位最大角度，用编码器值标定
-#define PITCH_ECD_ANGLE_MIN (3810 * GM6020_ENC_TO_DEGREE) // pitch轴电子限位最小角度，用编码器值标定 
+#define PITCH_ECD_ANGLE_MIN (3750 * GM6020_ENC_TO_DEGREE) // pitch轴电子限位最小角度，用编码器值标定 
 
 #define PITCH_NAV_SEEK_ENEMY_ANGLE_MAX 4.0f 
 #define PITCH_NAV_SEEK_ENEMY_ANGLE_MIN -20.0f 
 #define PITCH_NAV_SEEK_ENEMY_STEP 0.12f 
-#define PITCH_NAV_SEEK_OUTPOST_ANGLE_MAX 15.0f  
-#define PITCH_NAV_SEEK_OUTPOST_ANGLE_MIN -21.0f
+#define PITCH_NAV_SEEK_OUTPOST_ANGLE_MAX 18.0f  
+#define PITCH_NAV_SEEK_OUTPOST_ANGLE_MIN -5.0f
 #define PITCH_NAV_SEEK_OUTPOST_STEP 0.15f
 
 #define BIG_YAW_AUTOAIM_STOP_RANGE 10.0f // 大yaw轴自瞄死区，单位：度

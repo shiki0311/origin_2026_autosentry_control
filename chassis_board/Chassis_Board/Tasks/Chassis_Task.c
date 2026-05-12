@@ -22,7 +22,7 @@
 #include "Chassis_Power_Limiter.h"
 
 #define HAVE_REFEREE_SYSTEM 1 // ÉÚ±øµ±Ç°ÊÇ·ñ°²×°²ÃÅĞÏµÍ³
-#define COMPETE_MODE 0		  // ÊÇ·ñ±ÈÈüÄ£Ê½
+#define COMPETE	0  // ÊÇ·ñ±ÈÈüÄ£Ê½
 /*******************************µ×ÅÌ¿ØÖÆÏà¹Ø½á¹¹ÌåºÍÃ¶¾ÙÌå***********************************/
 typedef enum
 {
@@ -51,6 +51,7 @@ typedef struct // µ×ÅÌ¿ØÖÆ²ÎÊı½á¹¹Ìå
 
 	bool_t is_stop;					   // µ±Ç°ÊÇ·ñÍ£³µ
 	bool_t is_stop_last;			   // is_stop_lastÔÚ¶¨ÒåÊ±Ò»¶¨Òª³õÊ¼»¯ÎªTRUE,±£Ö¤ÔÚ½øÈë·ÇÊ§ÄÜÄ£Ê½µÄÊ±ºòÏÈ³õÊ¼»¯ÂÖµç»úĞı×ª·½Ïò
+	bool_t is_intended_stop_on_bumpy;		   // ÊÇ·ñÏëÒªÍ£³µ£¬ÓÃÓÚÔÚµßô¤Â·¶ÎÉÏ·ÀÖ¹½øÈë×ÔËø×´Ì¬
 	bool_t need_restore_buffer_energy; // ÊÇ·ñĞèÒª»Ö¸´»º³åÄÜÁ¿
 	bool_t bumpy_force_safe;		   // ÊÇ·ñ´¦ÓÚµßô¤Â·¶Î¸´»îÊ±µÄÇ¿ÖÆÊ§ÄÜ×´Ì¬
 	uint32_t bumpy_revive_power_timer; // µßô¤Â·¶Î¸´»îÊ±µÄ¹¦ÂÊ·Å´ó¼ÆÊ±Æ÷
@@ -358,7 +359,7 @@ static void Chassis_Max_Power_Update(fp32 *chassis_max_power) // ¸ù¾İ²»Í¬Ä£Ê½Ñ¡Ô
 				else
 				{
 					// 3Ãë¹ıºó£¬»Ö¸´ÆÕÍ¨µßô¤Â·¶ÎÂß¼­
-					*chassis_max_power = (nav_ctrl.referee_power_limit * 0.9f) > 120.0f ? (nav_ctrl.referee_power_limit * 0.9f) : 120.0f;
+					*chassis_max_power = (nav_ctrl.referee_power_limit * 0.9f) > 120.0f ? 180.0f : 120.0f;
 				}
 			}
 #else
@@ -487,6 +488,7 @@ static void Set_Chassis_VxVy(fp32 yaw_chassis_zero_rad, fp32 *chassis_vx, fp32 *
 	fp32 sin_yaw = arm_sin_f32(yaw_chassis_zero_rad);
 	fp32 cos_yaw = arm_cos_f32(yaw_chassis_zero_rad);
 
+	
 	if (chassis_rc_ctrl.s[1] == RC_SW_MID) // Ò£¿ØÆ÷¿ØÖÆÄ£Ê½
 	{
 		gimbal_vx = ramp_control(gimbal_vx, chassis_rc_ctrl.ch[3] * 10, 0.05f);
@@ -561,6 +563,13 @@ static void Set_Chassis_VxVy(fp32 yaw_chassis_zero_rad, fp32 *chassis_vx, fp32 *
 			gimbal_vy = 0;
 		}
 	}
+
+	if(chassis_control.is_intended_stop_on_bumpy)
+	{
+		gimbal_vx = 100.0f; // Õâ¸öÊıÖµÖ»»áÈÃ¶æ³¯Ç°£¬ÂÖµç»úµÄÄ¿±ê×ªËÙ»áÔÚchassis_control.is_intended_stop_on_bumpyÎªtrueµÄÊ±ºòÖÃÁã
+		gimbal_vy = 0.0f;
+	}
+		
 	*chassis_vx = cos_yaw * gimbal_vx + sin_yaw * gimbal_vy;
 	*chassis_vy = sin_yaw * gimbal_vx - cos_yaw * gimbal_vy;
 }
@@ -570,6 +579,11 @@ static void Set_Chassis_VxVy(fp32 yaw_chassis_zero_rad, fp32 *chassis_vx, fp32 *
  */
 static void Set_FollowGimbal_Wz(fp32 follow_gimbal_angle, fp32 *wz)
 {
+	if(chassis_control.is_intended_stop_on_bumpy)
+	{
+		*wz = 0.0f;
+		return;
+	}
 	PID_calc(&chassis_control.chassis_follow_gimbal_pid, follow_gimbal_angle, 0);
 	*wz = -chassis_control.chassis_follow_gimbal_pid.out;
 }
@@ -691,6 +705,16 @@ static void chassis_follow_gimbal_handler(void)
 	chassis_control.chassis_follow_gimbal_angle = Limit_To_180(chassis_follow_gimbal_zero_actual - DM_big_yaw_motor.pos); // ÓÃÓÚÉèÖÃµ×ÅÌ¸úËæ´óyawµÄ½ÇËÙ¶È
 	chassis_control.chassis_gimbal_angle_rad = Limit_To_180(CHASSIS_FOLLOW_GIMBAL_ZERO - DM_big_yaw_motor.pos) * DEGREE_TO_RAD;
 
+	// µßô¤Â·¶ÎÉÏ·ÀÖ¹½øÈë×ÔËø×´Ì¬
+	chassis_control.is_intended_stop_on_bumpy = FALSE;
+	if (chassis_control.chassis_max_power_mode == PASS_BUMPY && my_fabsf(chassis_target_speed.wz) <= 300.0f)
+	{
+		if (chassis_rc_ctrl.s[1] == RC_SW_MID)
+			chassis_control.is_intended_stop_on_bumpy = (my_fabsf(chassis_rc_ctrl.ch[3]) < 10 && my_fabsf(chassis_rc_ctrl.ch[2]) < 10);
+		else if (chassis_rc_ctrl.s[1] == RC_SW_UP)
+			chassis_control.is_intended_stop_on_bumpy = (my_fabsf(nav_ctrl.vx) < 0.05f && my_fabsf(nav_ctrl.vy) < 0.05f);
+	}
+
 	Set_Chassis_VxVy(chassis_control.chassis_gimbal_angle_rad, &chassis_target_speed.vx, &chassis_target_speed.vy);
 	Set_FollowGimbal_Wz(chassis_control.chassis_follow_gimbal_angle, &chassis_target_speed.wz);
 }
@@ -751,9 +775,9 @@ static void Chassis_Vector_To_Steer_Angle(const fp32 vx_set, const fp32 vy_set, 
 		return;
 	}
 
-	chassis_control.is_stop = ((my_fabsf(vx_set) <= 10.0f && my_fabsf(vy_set) <= 10.0f && my_fabsf(wz_set) <= 300.0f) ? TRUE : FALSE); // ÅĞ¶Ïµ±Ç°ÊÇ·ñÍ£³µ
+	chassis_control.is_stop = ((my_fabsf(vx_set) <= 10.0f && my_fabsf(vy_set) <= 10.0f && my_fabsf(wz_set) <= 300.0f ? TRUE : FALSE)); // ÅĞ¶Ïµ±Ç°ÊÇ·ñÍ£³µ
 
-	if (chassis_control.is_stop)
+	if (!chassis_control.is_intended_stop_on_bumpy && chassis_control.is_stop)
 	{
 		static uint32_t stop_start_time;
 		static uint8_t stop_flag;
@@ -848,6 +872,13 @@ static void Chassis_Vector_To_Wheel_Speed(const fp32 vx_set, const fp32 vy_set, 
 	{
 		return;
 	}
+	if(chassis_control.is_intended_stop_on_bumpy)
+	{
+		for (int i = 0; i < 4; i++)
+			chassis_wheel_motor[i].speed_set = 0.0f;
+		return;
+	}
+
 	fp32 vx_linear = wz_set * MOTOR_DISTANCE_WIDTH / (2 * MOTOR_DISTANCE_TO_CENTER);
 	fp32 vy_linear = wz_set * MOTOR_DISTANCE_LENGTH / (2 * MOTOR_DISTANCE_TO_CENTER);
 	fp32 wheel_speed[4];
@@ -1013,7 +1044,7 @@ void Chassis_Task(void const *argument)
 #endif
 		}
 		// Vofa_Send_Data4(((float)real_power) / 100, ((float)real_v) / 100, ((float)real_i) / 100, 0);
-		// Vofa_Send_Data4(nav_ctrl.just_revive * 100, chassis_control.bumpy_revive_power_timer, chassis_control.chassis_max_power, cap_data.cap_per * 100);
+		Vofa_Send_Data4(power_limiter.chassis_power_predicted, power_limiter.chassis_power_processed, chassis_control.chassis_max_power, 0);
 
 		cnt == 120 ? cnt = 1 : cnt++; // divµÈÓÚ2,3,4,5µÄ×îĞ¡¹«±¶ÊıÊ±ÖØÖÃ
 		vTaskDelay(1);

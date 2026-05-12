@@ -316,7 +316,7 @@ static fp32 Set_Big_Yaw_Seek_Enemy_Angle()
         seek_wait_start = xTaskGetTickCount();
         seek_wait_flag = 1;
     }
-    else if (xTaskGetTickCount() - seek_wait_start >= pdMS_TO_TICKS(2000))
+    else if (xTaskGetTickCount() - seek_wait_start >= pdMS_TO_TICKS(1500))
     {
         seek_wait_flag = 0;
     }
