@@ -341,6 +341,7 @@ extern "C"
 		uint8_t catch_engineer;	   // 抓工程,如果要抓则发送目标区域代号,想上中央高地就发1，兑矿无敌发2
 		uint8_t bumpy_exist_enemy; // 1有人0没人，只管我方半场
 		uint8_t enemy_base_flower; // 1基地开花，0基地未开花
+		uint8_t need_enable_power_rune; // 1需要使能量机关进入正在激活状态，0不需要使能量机关进入正在激活状态
 	} ext_radar_to_sentry_data_t;
 
 	typedef __packed struct // 0x0301 机器人间通信结构体，无人机发给哨兵的数据

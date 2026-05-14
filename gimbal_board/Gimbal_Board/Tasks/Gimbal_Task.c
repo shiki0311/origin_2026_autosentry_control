@@ -34,6 +34,7 @@ typedef enum
     AUTOAIM,               // 自瞄模式
     GIMBAL_REMOTE_CONTROL, // 遥控器控制模式
     NAV_SEEK_ENEMY,        // 导航寻敌模式
+    NAV_RUSH_HOME,         // 冲家巡航模式
     GIMBAL_SAFE            // 失能模式
 } gimbal_mode_t;
 /*************************云台电机被控变量枚举体****************************/
@@ -86,6 +87,7 @@ static void gimbal_nav_pass_bumpy_handler(void);
 static void gimbal_autoaim_handler(void);
 static void gimbal_remote_control_handler(void);
 static void gimbal_nav_seek_enemy_handler(void);
+static void gimbal_nav_rush_home_handler(void);
 static void gimbal_safe_handler(void);
 
 typedef void (*gimbal_handler)(void); // 不同云台模式对应的处理函数
@@ -94,6 +96,7 @@ gimbal_handler gimbal_commands[] = {
     [AUTOAIM] = gimbal_autoaim_handler,
     [GIMBAL_REMOTE_CONTROL] = gimbal_remote_control_handler,
     [NAV_SEEK_ENEMY] = gimbal_nav_seek_enemy_handler,
+    [NAV_RUSH_HOME] = gimbal_nav_rush_home_handler,
     [GIMBAL_SAFE] = gimbal_safe_handler};
 
 // 其余函数声明
@@ -104,7 +107,7 @@ static float Find_Yaw_Min_Angle(float target, float current);
 static void Check_Big_Yaw_DM_Auto_Enable();
 static bool_t Check_Big_Yaw_LostTarget_Wait(gimbal_mode_t last_mode);
 static fp32 Set_Big_Yaw_Seek_Enemy_Angle();
-static fp32 Set_Small_Yaw_Seek_Enemy_Angle();
+static fp32 Set_Small_Yaw_Seek_Enemy_Angle(gimbal_mode_t mode);
 static fp32 Pitch_Gravity_Compensation(float pitch_angle_now);
 void Check_Pitch_Angle_Limit(gimbal_motor_control_mode_t mode);
 static float Set_Pitch_Seek_Enemy_Angle(void);
@@ -211,6 +214,7 @@ static gimbal_mode_t Gimbal_Mode_Update()
 {
     bool_t check_nav_pass_bumpy = ((rc_ctrl.rc.s[1] == RC_SW_UP) && (NUC_Data_Receive.pass_bumpy_mode == 1));
     bool_t check_autoaim = (NUC_Data_Receive.small_yaw_aim != 0 || NUC_Data_Receive.pitch_aim != 0); // 是否满足自瞄模式，下面以此类推
+    bool_t check_nav_rush_home = (NUC_Data_Receive.middle_hit_home == 1 && rc_ctrl.rc.s[1] != RC_SW_DOWN);
     bool_t check_rc_ctrl = (rc_ctrl.rc.s[1] == RC_SW_MID);
     bool_t check_nav_seek_enemy = (rc_ctrl.rc.s[1] == RC_SW_UP);
     bool_t check_safe = ((rc_ctrl.rc.s[1] == RC_SW_DOWN) || toe_is_error(DBUS_TOE) || toe_is_error(DM_IMU_TOE) || toe_is_error(BOARD_ACCEL_TOE) || toe_is_error(BOARD_GYRO_TOE));
@@ -222,6 +226,10 @@ static gimbal_mode_t Gimbal_Mode_Update()
     else if (check_nav_pass_bumpy)
     {
         return NAV_PASS_BUMPY;
+    }
+    else if (check_nav_rush_home)
+    {
+        return NAV_RUSH_HOME;
     }
     else if (check_autoaim)
     {
@@ -328,13 +336,25 @@ static fp32 Set_Big_Yaw_Seek_Enemy_Angle()
  * @description: 用于计算导航索敌模式下小yaw轴左右摆动巡航的目标角度
  * @return {*}
  */
-static fp32 Set_Small_Yaw_Seek_Enemy_Angle()
+static fp32 Set_Small_Yaw_Seek_Enemy_Angle(gimbal_mode_t mode)
 {
     static float auto_small_yaw_watch = SMALL_YAW_MIDDLE_ENC_ZERO * GM6020_ENC_TO_DEGREE;
     static uint8_t swing_switch_flag = 0;
-    const SwingParams swing_params = {SMALL_YAW_NAV_SEEK_ECD_MIN * GM6020_ENC_TO_DEGREE,
-                                      SMALL_YAW_NAV_SEEK_ECD_MAX * GM6020_ENC_TO_DEGREE,
-                                      SMALL_YAW_NAV_SEEK_STEP};
+    SwingParams swing_params;
+
+    if (mode == NAV_RUSH_HOME)
+    {
+        swing_params.min_angle = SMALL_YAW_NAV_RUSH_HOME_ECD_MIN * GM6020_ENC_TO_DEGREE;
+        swing_params.max_angle = SMALL_YAW_NAV_RUSH_HOME_ECD_MAX * GM6020_ENC_TO_DEGREE;
+        swing_params.step = SMALL_YAW_NAV_RUSH_HOME_STEP;
+    }
+    else
+    {
+        swing_params.min_angle = SMALL_YAW_NAV_SEEK_ECD_MIN * GM6020_ENC_TO_DEGREE;
+        swing_params.max_angle = SMALL_YAW_NAV_SEEK_ECD_MAX * GM6020_ENC_TO_DEGREE;
+        swing_params.step = SMALL_YAW_NAV_SEEK_STEP;
+    }
+
     if (swing_switch_flag == 0)
     {
         auto_small_yaw_watch += swing_params.step;
@@ -649,7 +669,7 @@ static void gimbal_nav_seek_enemy_handler(void)
     gimbal_control.big_yaw_mode = POSITION_INS, gimbal_control.small_yaw_mode = POSITION_ENC, gimbal_control.pitch_mode = POSITION_INS;
 
     // 小yaw控制逻辑
-    gimbal_small_yaw_motor.ENC_angle_set = Set_Small_Yaw_Seek_Enemy_Angle();
+    gimbal_small_yaw_motor.ENC_angle_set = Set_Small_Yaw_Seek_Enemy_Angle(gimbal_control.gimbal_mode);
     Calculate_Gimbal_Motor_Target_Current(&gimbal_small_yaw_motor.angle_pid, POSITION_ENC, SMALL_YAW_MOTOR, gimbal_small_yaw_motor.ENC_angle_now, gimbal_small_yaw_motor.ENC_angle_set);
 
     // 大yaw控制逻辑
@@ -666,6 +686,32 @@ static void gimbal_nav_seek_enemy_handler(void)
 
     // pitch控制逻辑
     gimbal_pitch_motor.INS_angle_set = Set_Pitch_Seek_Enemy_Angle();
+    Check_Pitch_Angle_Limit(POSITION_INS);
+    Calculate_Gimbal_Motor_Target_Current(&gimbal_pitch_motor.angle_pid, POSITION_INS, PITCH_MOTOR, gimbal_pitch_motor.INS_angle_now, gimbal_pitch_motor.INS_angle_set);
+
+    gimbal_control.small_yaw_angle_err = gimbal_small_yaw_motor.ENC_angle_set - gimbal_small_yaw_motor.ENC_angle_now;
+    gimbal_control.big_yaw_angle_err = DM_big_yaw_motor.INS_angle_set - DM_big_yaw_motor.INS_angle_now;
+    gimbal_control.pitch_angle_err = gimbal_pitch_motor.INS_angle_set - gimbal_pitch_motor.INS_angle_now;
+}
+
+/**
+ * @description: 冲家巡航模式下的控制函数
+ * @return 无
+ */
+static void gimbal_nav_rush_home_handler(void)
+{
+    gimbal_control.big_yaw_mode = POSITION_INS, gimbal_control.small_yaw_mode = POSITION_ENC, gimbal_control.pitch_mode = POSITION_INS;
+
+    // 小yaw控制逻辑
+    gimbal_small_yaw_motor.ENC_angle_set = Set_Small_Yaw_Seek_Enemy_Angle(gimbal_control.gimbal_mode);
+    Calculate_Gimbal_Motor_Target_Current(&gimbal_small_yaw_motor.angle_pid, POSITION_ENC, SMALL_YAW_MOTOR, gimbal_small_yaw_motor.ENC_angle_now, gimbal_small_yaw_motor.ENC_angle_set);
+
+    // 大yaw控制逻辑
+    DM_big_yaw_motor.INS_angle_set = Find_Yaw_Min_Angle(NUC_Data_Receive.big_yaw_aim, DM_big_yaw_motor.INS_angle_now);
+    Calculate_Gimbal_Motor_Target_Current(&DM_big_yaw_motor.nav_angle_pid, POSITION_INS, BIG_YAW_MOTOR, DM_big_yaw_motor.INS_angle_now, DM_big_yaw_motor.INS_angle_set);
+
+    // pitch控制逻辑
+    gimbal_pitch_motor.INS_angle_set = PITCH_NAV_RUSH_HOME_ANGLE;
     Check_Pitch_Angle_Limit(POSITION_INS);
     Calculate_Gimbal_Motor_Target_Current(&gimbal_pitch_motor.angle_pid, POSITION_INS, PITCH_MOTOR, gimbal_pitch_motor.INS_angle_now, gimbal_pitch_motor.INS_angle_set);
 

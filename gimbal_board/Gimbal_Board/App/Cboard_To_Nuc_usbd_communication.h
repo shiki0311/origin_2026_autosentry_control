@@ -69,7 +69,7 @@ typedef struct
 	uint16_t shooter_heat_limit; //枪口热量上限
 	uint16_t shooter_heat_now; //当前枪口热量
 	uint8_t remain_energy;  //剩余底盘能量
-	uint8_t health_state;		 // 健康状态
+	uint8_t health_state;	// 健康状态
 	uint8_t state_now; //当前姿态
 	//全局信息
 	uint16_t stage_remain_time;

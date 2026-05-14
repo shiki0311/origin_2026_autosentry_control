@@ -103,6 +103,12 @@
 #define SMALL_YAW_NAV_SEEK_ECD_MIN 2900 //导航索敌模式搜索角度最小值，为小yaw电机编码器值减去8192（跟安装位置有关，索敌时电机活动范围越过编码器零点了）
 #define SMALL_YAW_NAV_SEEK_STEP 0.16 //导航索敌模式下小yaw轴每次调整的角度步进，单位：度
 
+#define SMALL_YAW_NAV_RUSH_HOME_ECD_MAX 4140 //冲家巡航模式搜索角度最大值
+#define SMALL_YAW_NAV_RUSH_HOME_ECD_MIN 2900 //冲家巡航模式搜索角度最小值
+#define SMALL_YAW_NAV_RUSH_HOME_STEP 0.08 //冲家巡航模式下小yaw轴每次调整的角度步进，速度变小
+
+#define PITCH_NAV_RUSH_HOME_ANGLE -3.0f //冲家巡航模式下pitch轴的定值目标角度
+
 #define PITCH_ECD_ANGLE_MAX (4583 * GM6020_ENC_TO_DEGREE) // pitch轴电子限位最大角度，用编码器值标定
 #define PITCH_ECD_ANGLE_MIN (3750 * GM6020_ENC_TO_DEGREE) // pitch轴电子限位最小角度，用编码器值标定 
 
