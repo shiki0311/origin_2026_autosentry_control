@@ -152,7 +152,7 @@ void NUC_USBD_Tx(uint8_t cmdid)
 
 		//全局信息
 		Referee_Data_Transmit.stage_remain_time = Game_Status.stage_remain_time;
-		Referee_Data_Transmit.game_progress = Game_Status.game_progress;
+	  Referee_Data_Transmit.game_progress = Game_Status.game_progress;
 		Referee_Data_Transmit.ally_outpost_HP = Game_Robot_HP.ally_outpost_HP;
 		Referee_Data_Transmit.ally_base_HP = Game_Robot_HP.ally_base_HP;
 		Referee_Data_Transmit.rfid_status = RFID_Status.rfid_status;
@@ -163,7 +163,6 @@ void NUC_USBD_Tx(uint8_t cmdid)
 		Referee_Data_Transmit.catch_engineer = Radar_To_Sentry_Data.catch_engineer;
 		Referee_Data_Transmit.bumpy_exist_enemy = Radar_To_Sentry_Data.bumpy_exist_enemy;
 		Referee_Data_Transmit.enemy_base_flower = Radar_To_Sentry_Data.enemy_base_flower;
-		Referee_Data_Transmit.need_enable_power_rune = Drone_To_Sentry_Data.need_enable_power_rune;
 		Referee_Data_Transmit.could_fire = Game_Robot_State.power_management_shooter_output;
 
 		if(Robot_Command.target_position_x == 0 && Robot_Command.target_position_y == 0)

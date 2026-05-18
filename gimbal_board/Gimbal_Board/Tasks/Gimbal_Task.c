@@ -105,7 +105,7 @@ static void Gimbal_Data_Update(void);
 static gimbal_mode_t Gimbal_Mode_Update(void);
 static float Find_Yaw_Min_Angle(float target, float current);
 static void Check_Big_Yaw_DM_Auto_Enable();
-static bool_t Check_Big_Yaw_LostTarget_Wait(gimbal_mode_t last_mode);
+static bool_t Check_LostTarget_Wait(gimbal_mode_t last_mode);
 static fp32 Set_Big_Yaw_Seek_Enemy_Angle();
 static fp32 Set_Small_Yaw_Seek_Enemy_Angle(gimbal_mode_t mode);
 static fp32 Pitch_Gravity_Compensation(float pitch_angle_now);
@@ -285,21 +285,30 @@ static void Check_Big_Yaw_DM_Auto_Enable()
  * @description: 检查自瞄目标是否丢失，若丢失则大yaw电机原地停两秒防止敌人再次出现，复活赛弃用，联盟赛可开启
  * @return none
  */
-static bool_t Check_Big_Yaw_LostTarget_Wait(gimbal_mode_t last_mode)
+static bool_t Check_LostTarget_Wait(gimbal_mode_t last_mode)
 {
     static uint32_t start_time = 0;
-    static bool_t need_wait = FALSE; // 作为函数返回值
+    static bool_t need_wait = FALSE;                 // 作为函数返回值
+    static uint32_t NAV_RUSH_HOME_WAIT_TIME = 2500;  // 冲家模式 自瞄延时时间
+    static uint32_t NAV_SEEK_ENEMY_WAIT_TIME = 1500; // 非正常模式 自瞄大yaw延时时间
 
     if (last_mode == AUTOAIM)
     {
         need_wait = TRUE;
         start_time = xTaskGetTickCount();
     }
+    else if (last_mode != gimbal_control.gimbal_mode) // 冲家寻敌和正常寻敌互切时，取消延时
+    {
+        need_wait = FALSE;
+    }
 
     if (need_wait == TRUE)
     {
-        // 检查是否已等待满1.5秒
-        if (xTaskGetTickCount() - start_time > pdMS_TO_TICKS(1500))
+        if (gimbal_control.gimbal_mode == NAV_RUSH_HOME && xTaskGetTickCount() - start_time > pdMS_TO_TICKS(NAV_RUSH_HOME_WAIT_TIME))
+        {
+            need_wait = FALSE;
+        }
+        else if (xTaskGetTickCount() - start_time > pdMS_TO_TICKS(NAV_SEEK_ENEMY_WAIT_TIME))
         {
             need_wait = FALSE;
         }
@@ -673,7 +682,7 @@ static void gimbal_nav_seek_enemy_handler(void)
     Calculate_Gimbal_Motor_Target_Current(&gimbal_small_yaw_motor.angle_pid, POSITION_ENC, SMALL_YAW_MOTOR, gimbal_small_yaw_motor.ENC_angle_now, gimbal_small_yaw_motor.ENC_angle_set);
 
     // 大yaw控制逻辑
-    if (Check_Big_Yaw_LostTarget_Wait(gimbal_control.gimbal_mode_last) == TRUE) // 自瞄刚丢失目标
+    if (Check_LostTarget_Wait(gimbal_control.gimbal_mode_last) == TRUE) // 自瞄刚丢失目标
     {
         DM_big_yaw_motor.INS_angle_set = DM_big_yaw_motor.INS_angle_now; 
     }
@@ -700,24 +709,29 @@ static void gimbal_nav_seek_enemy_handler(void)
  */
 static void gimbal_nav_rush_home_handler(void)
 {
-    gimbal_control.big_yaw_mode = POSITION_INS, gimbal_control.small_yaw_mode = POSITION_ENC, gimbal_control.pitch_mode = POSITION_INS;
+        gimbal_control.big_yaw_mode = POSITION_INS, gimbal_control.small_yaw_mode = POSITION_ENC, gimbal_control.pitch_mode = POSITION_INS;
 
-    // 小yaw控制逻辑
-    gimbal_small_yaw_motor.ENC_angle_set = Set_Small_Yaw_Seek_Enemy_Angle(gimbal_control.gimbal_mode);
-    Calculate_Gimbal_Motor_Target_Current(&gimbal_small_yaw_motor.angle_pid, POSITION_ENC, SMALL_YAW_MOTOR, gimbal_small_yaw_motor.ENC_angle_now, gimbal_small_yaw_motor.ENC_angle_set);
+        if (Check_LostTarget_Wait(gimbal_control.gimbal_mode_last) == TRUE) // 自瞄刚丢失目标
+        {
+            gimbal_small_yaw_motor.ENC_angle_set = gimbal_small_yaw_motor.ENC_angle_now;
+            DM_big_yaw_motor.INS_angle_set = DM_big_yaw_motor.INS_angle_now;
+            gimbal_pitch_motor.INS_angle_set = gimbal_pitch_motor.INS_angle_now;
+        }
+        else // 正常索敌
+        {
+            gimbal_small_yaw_motor.ENC_angle_set = Set_Small_Yaw_Seek_Enemy_Angle(gimbal_control.gimbal_mode);
+            DM_big_yaw_motor.INS_angle_set = Find_Yaw_Min_Angle(NUC_Data_Receive.big_yaw_aim, DM_big_yaw_motor.INS_angle_now);
+            gimbal_pitch_motor.INS_angle_set = PITCH_NAV_RUSH_HOME_ANGLE;
+        }
 
-    // 大yaw控制逻辑
-    DM_big_yaw_motor.INS_angle_set = Find_Yaw_Min_Angle(NUC_Data_Receive.big_yaw_aim, DM_big_yaw_motor.INS_angle_now);
-    Calculate_Gimbal_Motor_Target_Current(&DM_big_yaw_motor.nav_angle_pid, POSITION_INS, BIG_YAW_MOTOR, DM_big_yaw_motor.INS_angle_now, DM_big_yaw_motor.INS_angle_set);
+        Calculate_Gimbal_Motor_Target_Current(&gimbal_small_yaw_motor.angle_pid, POSITION_ENC, SMALL_YAW_MOTOR, gimbal_small_yaw_motor.ENC_angle_now, gimbal_small_yaw_motor.ENC_angle_set);
+        Calculate_Gimbal_Motor_Target_Current(&DM_big_yaw_motor.nav_angle_pid, POSITION_INS, BIG_YAW_MOTOR, DM_big_yaw_motor.INS_angle_now, DM_big_yaw_motor.INS_angle_set);
+        Check_Pitch_Angle_Limit(POSITION_INS);
+        Calculate_Gimbal_Motor_Target_Current(&gimbal_pitch_motor.angle_pid, POSITION_INS, PITCH_MOTOR, gimbal_pitch_motor.INS_angle_now, gimbal_pitch_motor.INS_angle_set);
 
-    // pitch控制逻辑
-    gimbal_pitch_motor.INS_angle_set = PITCH_NAV_RUSH_HOME_ANGLE;
-    Check_Pitch_Angle_Limit(POSITION_INS);
-    Calculate_Gimbal_Motor_Target_Current(&gimbal_pitch_motor.angle_pid, POSITION_INS, PITCH_MOTOR, gimbal_pitch_motor.INS_angle_now, gimbal_pitch_motor.INS_angle_set);
-
-    gimbal_control.small_yaw_angle_err = gimbal_small_yaw_motor.ENC_angle_set - gimbal_small_yaw_motor.ENC_angle_now;
-    gimbal_control.big_yaw_angle_err = DM_big_yaw_motor.INS_angle_set - DM_big_yaw_motor.INS_angle_now;
-    gimbal_control.pitch_angle_err = gimbal_pitch_motor.INS_angle_set - gimbal_pitch_motor.INS_angle_now;
+        gimbal_control.small_yaw_angle_err = gimbal_small_yaw_motor.ENC_angle_set - gimbal_small_yaw_motor.ENC_angle_now;
+        gimbal_control.big_yaw_angle_err = DM_big_yaw_motor.INS_angle_set - DM_big_yaw_motor.INS_angle_now;
+        gimbal_control.pitch_angle_err = gimbal_pitch_motor.INS_angle_set - gimbal_pitch_motor.INS_angle_now;
 }
 
 /**

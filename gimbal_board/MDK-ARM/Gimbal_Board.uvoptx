@@ -159,7 +159,7 @@
           <Type>0</Type>
           <LineNumber>302</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134250010</Address>
+          <Address>134250082</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -262,12 +262,17 @@
           <WinNumber>1</WinNumber>
           <ItemText>Drone_To_Sentry_Data</ItemText>
         </Ww>
+        <Ww>
+          <count>18</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>Referee_Data_Transmit,0x10</ItemText>
+        </Ww>
       </WatchWindow1>
       <MemoryWindow1>
         <Mm>
           <WinNumber>1</WinNumber>
           <SubType>0</SubType>
-          <ItemText>0x2000FD30</ItemText>
+          <ItemText>\\Gimbal_Board\../Gimbal_Board/App/Cboard_To_Nuc_usbd_communication.c\Referee_Data_Transmit</ItemText>
           <AccSizeX>0</AccSizeX>
         </Mm>
       </MemoryWindow1>

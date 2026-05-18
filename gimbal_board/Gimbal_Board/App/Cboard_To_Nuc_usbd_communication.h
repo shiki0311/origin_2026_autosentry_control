@@ -85,7 +85,6 @@ typedef struct
 	uint8_t rush_home; //冲家，1冲中央高地，2冲泉水
 	uint8_t bumpy_exist_enemy; // 1有人0没人，只管我方半场
 	uint8_t enemy_base_flower; //1基地开花，0基地未开花
-	uint8_t need_enable_power_rune; // 1需要使能量机关进入正在激活状态，0不需要使能量机关进入正在激活状态
 	uint8_t could_fire; //发射机构是否解锁
 } __attribute__((__packed__)) Referee_Data_Tx;
 /*******************************************END**********************************************/

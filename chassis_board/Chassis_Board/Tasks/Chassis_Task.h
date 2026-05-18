@@ -25,10 +25,10 @@
 #define MOTOR_DISTANCE_LENGTH 0.41f // 底盘较长的轮距
 #define WHEEL_RADIUS 0.06f  //舵轮半径
 #define MOTOR_REDUCTION_RATIO 13.72f  // 轮电机减速比
-#define CHASSIS_FOLLOW_GIMBAL_BACK_ZERO 247.33f  //底盘跟随云台时的后零点，单位：度
-#define CHASSIS_FOLLOW_GIMBAL_RIGHT_ZERO 337.33f // 底盘跟随云台时的右零点
-#define CHASSIS_FOLLOW_GIMBAL_LEFT_ZERO 157.33f  // 底盘跟随云台时的左零点
-#define CHASSIS_FOLLOW_GIMBAL_ZERO 67.33f       // 底盘跟随云台时的零点，同时也是小陀螺模式下底盘vx(前进)正方向
+#define CHASSIS_FOLLOW_GIMBAL_BACK_ZERO 252.33f  //底盘跟随云台时的后零点，单位：度
+#define CHASSIS_FOLLOW_GIMBAL_RIGHT_ZERO 342.33f // 底盘跟随云台时的右零点
+#define CHASSIS_FOLLOW_GIMBAL_LEFT_ZERO 162.33f  // 底盘跟随云台时的左零点
+#define CHASSIS_FOLLOW_GIMBAL_ZERO 72.33f       // 底盘跟随云台时的零点，同时也是小陀螺模式下底盘vx(前进)正方向
 
 #define STEER_MOROR1_ENC_OFFSET 4782 //1号舵电机的编码器偏置（范围0-8191）
 #define STEER_MOROR2_ENC_OFFSET 7673 //2号舵电机的编码器偏置（范围0-8191）

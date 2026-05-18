@@ -362,12 +362,6 @@ void Sentry_PushUp_Cmd(Sentry_Auto_Cmd_Send_t *Sentry_Auto_Cmd, uint8_t RobotID)
 	memset(&Sentry_Auto_Cmd->sentry_cmd, 0, sizeof(sentry_cmd_t));
 	Sentry_Auto_Cmd->sentry_cmd.ensure_revive = Sentry_Info.can_revive_free;	// 可以复活的话请求复活
 	Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = toe_is_error(NUC_DATA_TOE) ? MOVE_MODE : NUC_Data_Receive.target_mode;
-	// 根据无人机的数据判断是否需要激活能量机关
-	Sentry_Auto_Cmd->sentry_cmd.enable_power_rune = Radar_To_Sentry_Data.need_enable_power_rune;
-	//    if (!Buff_Musk.remaining_energy)
-	//        Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = ATTACK_MODE;
-	//    else
-	//        Sentry_Auto_Cmd->sentry_cmd.change_sentry_mode = MOVE_MODE;
 
 	Sentry_Auto_Cmd->CRC16 = CRC16_Calculate((uint8_t *)Sentry_Auto_Cmd, sizeof(Sentry_Auto_Cmd_Send_t) - 2); // frame_tail CRC16校验
 
